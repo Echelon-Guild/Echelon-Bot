@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Echelon-Bot": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
