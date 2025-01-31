@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
-namespace Echelon_Bot
+namespace EchelonBot
 {
     public static class LogHelper
     {

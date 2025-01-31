@@ -1,6 +1,6 @@
 ﻿using Discord.Interactions;
 
-namespace Echelon_Bot.Modules
+namespace EchelonBot
 {
     public class MathModule : InteractionModuleBase<SocketInteractionContext>
     {

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Echelon_Bot.Services
+namespace EchelonBot
 {
     public class DiscordStartupService : IHostedService
     {

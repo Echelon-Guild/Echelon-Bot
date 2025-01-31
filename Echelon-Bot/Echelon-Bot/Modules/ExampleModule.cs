@@ -3,12 +3,12 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using System.Threading.Tasks;
 
-namespace Echelon_Bot.Modules
+namespace EchelonBot
 {
     public class ExampleModule : InteractionModuleBase<SocketInteractionContext>
     {
         [SlashCommand("say", "Make the bot say something.")]
         public Task Say(string text)
-            => ReplyAsync(text);
+            => RespondAsync(text);
     }
 }

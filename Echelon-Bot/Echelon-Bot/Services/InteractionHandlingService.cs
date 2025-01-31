@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using EchelonBot;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,7 +10,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Echelon_Bot.Services
+namespace EchelonBot
 {
     public class InteractionHandlingService : IHostedService
     {
@@ -17,14 +18,14 @@ namespace Echelon_Bot.Services
         private readonly InteractionService _interactions;
         private readonly IServiceProvider _services;
         private readonly IConfiguration _config;
-        private readonly ILogger<InteractionHandlingService> _logger;
+        private readonly ILogger<InteractionService> _logger;
 
         public InteractionHandlingService(
             DiscordSocketClient discord,
             InteractionService interactions,
             IServiceProvider services,
             IConfiguration config,
-            ILogger<InteractionHandlingService> logger)
+            ILogger<InteractionService> logger)
         {
             _discord = discord;
             _interactions = interactions;
