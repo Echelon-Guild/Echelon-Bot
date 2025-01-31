@@ -38,7 +38,7 @@ namespace EchelonBot
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            _discord.Ready += () => _interactions.RegisterCommandsGloballyAsync(true);
+            _discord.Ready += () => _interactions.RegisterCommandsToGuildAsync(1334597260662542416, true); // _interactions.RegisterCommandsGloballyAsync(true);
             _discord.InteractionCreated += OnInteractionAsync;
 
             await _interactions.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
