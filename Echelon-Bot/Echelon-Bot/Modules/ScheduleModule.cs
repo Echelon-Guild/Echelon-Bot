@@ -13,7 +13,7 @@ namespace EchelonBot
         {
             EchelonEvent event_ = NewEchelonEvent(EventType.Dungeon, time, name);
 
-            return RespondToEventAsync(event_);
+            return RespondToGameEventAsync(event_);
         }
 
         [SlashCommand("raid", "Schedule a Raid")]
@@ -21,7 +21,7 @@ namespace EchelonBot
         {
             EchelonEvent event_ = NewEchelonEvent(EventType.Raid, time, name);
 
-            return RespondToEventAsync(event_);
+            return RespondToGameEventAsync(event_);
         }
 
         [SlashCommand("meeting", "Schedule a Meeting")]
@@ -29,7 +29,7 @@ namespace EchelonBot
         {
             EchelonEvent event_ = NewEchelonEvent(EventType.Meeting, time, name);
 
-            return RespondToEventAsync(event_);
+            return RespondToMeetingEventAsync(event_);
         }
 
         private EchelonEvent NewEchelonEvent(EventType eventType, DateTime time, string name)
@@ -87,22 +87,43 @@ namespace EchelonBot
             return embed;
         }
 
-        private Task RespondToEventAsync(EchelonEvent ecEvent)
+        private Task RespondToGameEventAsync(EchelonEvent ecEvent)
         {
-            MessageComponent buttonComponent = new ComponentBuilder()
+            MessageComponent components = new ComponentBuilder()
                 .WithButton("Sign Up", $"signup_event_{ecEvent.Id}")
+                .WithButton("Abscence", $"abscence_event_{ecEvent.Id}")
+                .WithButton("Tentative", $"tentative_event_{ecEvent.Id}")
                 .Build();
 
             Embed embed = CreateEmbed(ecEvent);
 
-            return RespondAsync(embed: embed, components: buttonComponent);
+            return RespondAsync(embed: embed, components: components);
+        }
+
+        private Task RespondToMeetingEventAsync(EchelonEvent ecEvent)
+        {
+            MessageComponent components = new ComponentBuilder()
+                .WithButton("Sign Up", $"signupmeeting_event_{ecEvent.Id}")
+                .WithButton("Abscence", $"abscence_event_{ecEvent.Id}")
+                .WithButton("Tentative", $"tentative_event_{ecEvent.Id}")
+                .Build();
+
+            Embed embed = CreateEmbed(ecEvent);
+
+            return RespondAsync(embed: embed, components: components);
+        }
+
+        [ComponentInteraction("signupmeeting_*")]
+        public async Task HandleMeetingSignup(string customId)
+        {
+            int eventId = int.Parse(customId.Split('_')[1]);
+
+            await RespondAsync("See you at the meeting!", ephemeral: true);
         }
 
         [ComponentInteraction("signup_*")]
         public async Task HandleSignup(string customId)
         {
-            Console.WriteLine($"In HandleSignup. customId is {customId}");
-
             int eventId = int.Parse(customId.Split('_')[1]);
 
             var classDropdown = new SelectMenuBuilder()
@@ -233,6 +254,21 @@ namespace EchelonBot
             //await UpdateEventEmbed(eventId);
         }
 
+        [ComponentInteraction("abscence_event_*")]
+        public async Task HandleAbscence(string customId)
+        {
+            int eventId = int.Parse(customId);
+
+            await RespondAsync("We'll miss you!", ephemeral: true);
+        }
+
+        [ComponentInteraction("tentative_event_*")]
+        public async Task HandleTentative(string customId)
+        {
+            int eventId = int.Parse(customId);
+
+            await RespondAsync("We hope to see you!", ephemeral: true);
+        }
 
         private string GetRole(string playerClass, string spec)
         {
@@ -245,7 +281,5 @@ namespace EchelonBot
             if (healers.Contains(fullSpec)) return "Healer";
             return "DPS";
         }
-
-
     }
 }
