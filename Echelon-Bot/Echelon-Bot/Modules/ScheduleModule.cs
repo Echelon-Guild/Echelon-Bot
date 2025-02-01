@@ -1,13 +1,19 @@
 ﻿using Discord;
 using Discord.Interactions;
+using EchelonBot.Data;
 using EchelonBot.Models;
-using Microsoft.Extensions.Logging;
-using System.Linq;
 
 namespace EchelonBot
 {
     public class ScheduleModule : InteractionModuleBase<SocketInteractionContext>
     {
+        private readonly EchelonBotDbContext _db;
+
+        public ScheduleModule(EchelonBotDbContext echelonBotDbContext)
+        {
+            _db = echelonBotDbContext;
+        }
+
         [SlashCommand("mythic", "Schedule a Mythic+")]
         public Task Mythic(DateTime time, string name)
         {
@@ -53,25 +59,25 @@ namespace EchelonBot
             switch (ecEvent.EventType)
             {
                 case EventType.Raid:
-                {
-                    color = Color.Orange;
-                    break;
-                }
+                    {
+                        color = Color.Orange;
+                        break;
+                    }
                 case EventType.Dungeon:
-                {
-                    color = Color.Green;
-                    break;
-                }
+                    {
+                        color = Color.Green;
+                        break;
+                    }
                 case EventType.Meeting:
-                {
-                    color = Color.Blue;
-                    break;
-                }
+                    {
+                        color = Color.Blue;
+                        break;
+                    }
                 default:
-                {
-                    color = Color.Red;
-                    break;
-                }
+                    {
+                        color = Color.Red;
+                        break;
+                    }
             }
 
             Embed embed = new EmbedBuilder()
@@ -248,7 +254,7 @@ namespace EchelonBot
             var user = Context.User.GlobalName;
 
             // Confirm signup
-            await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Replace("_"," ").ToUpper()} {selectedClass.ToUpper()}** ({role})", ephemeral: true);
+            await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Replace("_", " ").ToUpper()} {selectedClass.ToUpper()}** ({role})", ephemeral: true);
 
             // Update event embed
             //await UpdateEventEmbed(eventId);
