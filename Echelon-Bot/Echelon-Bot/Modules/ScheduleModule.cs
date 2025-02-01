@@ -101,7 +101,9 @@ namespace EchelonBot
         [ComponentInteraction("signup_*")]
         public async Task HandleSignup(string customId)
         {
-            var eventId = int.Parse(customId.Split('_')[1]);
+            Console.WriteLine($"In HandleSignup. customId is {customId}");
+
+            int eventId = int.Parse(customId.Split('_')[1]);
 
             var classDropdown = new SelectMenuBuilder()
                 .WithCustomId($"class_select_{eventId}")
@@ -128,7 +130,7 @@ namespace EchelonBot
         [ComponentInteraction("class_select_*")]
         public async Task HandleClassSelection(string customId, string selectedClass)
         {
-            var eventId = int.Parse(customId);
+            int eventId = int.Parse(customId);
 
             var specDropdown = new SelectMenuBuilder()
                 .WithCustomId($"spec_select_{eventId}_{selectedClass}")
@@ -138,51 +140,72 @@ namespace EchelonBot
             switch (selectedClass)
             {
                 case "death_knight":
-                    specDropdown.AddOption("Blood", "death_knight-blood").AddOption("Frost", "death_knight-frost").AddOption("Unholy", "death_knight-unholy");
+                    specDropdown.AddOption("Blood", "blood")
+                                .AddOption("Frost", "frost")
+                                .AddOption("Unholy", "unholy");
                     break;
                 case "demon_hunter":
-                    specDropdown.AddOption("Havoc", "demon_hunter-havoc").AddOption("Vengeance", "demon_hunter-vengeance");
+                    specDropdown.AddOption("Havoc", "havoc")
+                                .AddOption("Vengeance", "vengeance");
                     break;
                 case "druid":
-                    specDropdown.AddOption("Balance", "druid-balance").AddOption("Feral", "druid-feral")
-                                 .AddOption("Guardian", "guardian").AddOption("Restoration", "restoration");
+                    specDropdown.AddOption("Balance", "balance")
+                                .AddOption("Feral", "feral")
+                                .AddOption("Guardian", "guardian")
+                                .AddOption("Restoration", "restoration");
                     break;
                 case "evoker":
-                    specDropdown.AddOption("Devastation", "evoker-devastation").AddOption("Preservation", "evoker-preservation")
-                                 .AddOption("Augmentation", "augmentation");
+                    specDropdown.AddOption("Devastation", "devastation")
+                                .AddOption("Preservation", "preservation")
+                                .AddOption("Augmentation", "augmentation");
                     break;
                 case "hunter":
-                    specDropdown.AddOption("Beast Mastery", "hunter-beast_mastery").AddOption("Marksmanship", "hunter-marksmanship")
-                                 .AddOption("Survival", "survival");
+                    specDropdown.AddOption("Beast Mastery", "beast_mastery")
+                                .AddOption("Marksmanship", "marksmanship")
+                                .AddOption("Survival", "survival");
                     break;
                 case "mage":
-                    specDropdown.AddOption("Arcane", "mage-arcane").AddOption("Fire", "mage-fire").AddOption("Frost", "mage-frost");
+                    specDropdown.AddOption("Arcane", "arcane")
+                                .AddOption("Fire", "fire")
+                                .AddOption("Frost", "frost");
                     break;
                 case "monk":
-                    specDropdown.AddOption("Brewmaster", "monk-brewmaster").AddOption("Mistweaver", "monk-mistweaver")
-                                 .AddOption("Windwalker", "monk-windwalker");
+                    specDropdown.AddOption("Brewmaster", "brewmaster")
+                                .AddOption("Mistweaver", "mistweaver")
+                                .AddOption("Windwalker", "windwalker");
                     break;
                 case "paladin":
-                    specDropdown.AddOption("Holy", "paladin-holy").AddOption("Protection", "paladin-protection").AddOption("Retribution", "paladin-retribution");
+                    specDropdown.AddOption("Holy", "holy")
+                                .AddOption("Protection", "protection")
+                                .AddOption("Retribution", "retribution");
                     break;
                 case "priest":
-                    specDropdown.AddOption("Discipline", "priest-discipline").AddOption("Holy", "priest-holy").AddOption("Shadow", "priest-shadow");
+                    specDropdown.AddOption("Discipline", "discipline")
+                                .AddOption("Holy", "holy")
+                                .AddOption("Shadow", "shadow");
                     break;
                 case "rogue":
-                    specDropdown.AddOption("Assassination", "rogue-assassination").AddOption("Outlaw", "rogue-outlaw").AddOption("Subtlety", "rogue-subtlety");
+                    specDropdown.AddOption("Assassination", "assassination")
+                                .AddOption("Outlaw", "outlaw")
+                                .AddOption("Subtlety", "subtlety");
                     break;
                 case "shaman":
-                    specDropdown.AddOption("Elemental", "shaman-elemental").AddOption("Enhancement", "shaman-enhancement")
-                                 .AddOption("Restoration", "shaman-restoration");
+                    specDropdown.AddOption("Elemental", "elemental")
+                                .AddOption("Enhancement", "enhancement")
+                                .AddOption("Restoration", "restoration");
                     break;
                 case "warlock":
-                    specDropdown.AddOption("Affliction", "warlock-affliction").AddOption("Demonology", "warlock-demonology")
-                                 .AddOption("Destruction", "warlock-destruction");
+                    specDropdown.AddOption("Affliction", "affliction")
+                                .AddOption("Demonology", "demonology")
+                                .AddOption("Destruction", "destruction");
                     break;
                 case "warrior":
-                    specDropdown.AddOption("Arms", "warrior-arms").AddOption("Fury", "warrior-fury").AddOption("Protection", "warrior-protection");
+                    specDropdown.AddOption("Arms", "arms")
+                                .AddOption("Fury", "fury")
+                                .AddOption("Protection", "protection");
                     break;
             }
+
 
             var builder = new ComponentBuilder().WithSelectMenu(specDropdown);
 
@@ -190,31 +213,21 @@ namespace EchelonBot
         }
 
         [ComponentInteraction("spec_select_*_*")]
-        public async Task HandleSpecSelection(string customId, string selectedSpec)
+        public async Task HandleSpecSelection(string customId, string selectedClass, string selectedSpec)
         {
-            Console.WriteLine(customId);
-
             if (string.IsNullOrWhiteSpace(selectedSpec))
             {
                 await RespondAsync("❌ No specialization selected.", ephemeral: true);
                 return;
             }
 
-            var parts = customId.Split('_');
-            if (parts.Length < 4)
-            {
-                await RespondAsync("❌ Invalid selection data.", ephemeral: true);
-                return;
-            }
-
-            var eventId = int.Parse(parts[2]);
-            var selectedClass = parts[3];
+            int eventId = int.Parse(customId);
 
             var role = GetRole(selectedClass, selectedSpec);
-            var user = Context.User.Username;
+            var user = Context.User.GlobalName;
 
             // Confirm signup
-            await RespondAsync($"✅ {user} signed up as a **{selectedSpec.ToUpper()} {selectedClass.ToUpper()}** ({role})", ephemeral: true);
+            await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Replace("_"," ").ToUpper()} {selectedClass.ToUpper()}** ({role})", ephemeral: true);
 
             // Update event embed
             //await UpdateEventEmbed(eventId);
