@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
@@ -41,9 +43,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: List project files for debugging
-        run: ls -R
+        run: |
+          echo "Current Directory:"
+          pwd
+          echo "Listing Files:"
+          ls -R
 
       - name: Login to Azure Container Registry
         uses: azure/docker-login@v1
@@ -54,7 +62,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/echelon-bot:latest -f ./Echelon-Bot/Echelon-Bot/Dockerfile ./Echelon-Bot/Echelon-Bot
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/echelon-bot:latest -f ./Echelon-Bot/Echelon-Bot/Dockerfile .
 
       - name: Push Docker image
         run: |
