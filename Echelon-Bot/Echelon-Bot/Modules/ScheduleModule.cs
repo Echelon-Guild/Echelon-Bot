@@ -2,12 +2,55 @@
 using Discord;
 using Discord.Interactions;
 using EchelonBot.Models;
+using EchelonBot.Models.Entities;
 using System.Text;
 
 namespace EchelonBot
 {
     public class ScheduleModule : InteractionModuleBase<SocketInteractionContext>
     {
+        private readonly TableClient _eventsTableClient;
+        private readonly TableClient _attendeeTableClient;
+
+        public ScheduleModule(TableServiceClient tableServiceClient)
+        {
+            _eventsTableClient = tableServiceClient.GetTableClient("EchelonEvents");
+            _eventsTableClient.CreateIfNotExists();
+
+            _attendeeTableClient = tableServiceClient.GetTableClient("AttendeeRecords");
+            _attendeeTableClient.CreateIfNotExists();
+        }
+
+        public async Task SaveEventToTableStorage(EchelonEvent event_)
+        {
+            var entity = new EchelonEventEntity
+            {
+                PartitionKey = event_.EventType.ToString(),
+                RowKey = event_.Id.ToString(),
+                EventName = event_.Name,
+                EventDateTime = event_.EventDateTime,
+                Organizer = Context.User.Username
+            };
+
+            await _eventsTableClient.UpsertEntityAsync(entity);
+        }
+
+        public async Task SaveAttendeeRecordToTableStorage(AttendeeRecord record)
+        {
+            var entity = new AttendeeRecordEntity
+            {
+                PartitionKey = record.EventId.ToString(),
+                RowKey = record.DiscordName,
+                DiscordName = record.DiscordName,
+                DiscordDisplayName = record.DiscordDisplayName,
+                Role = record.Role,
+                Class = record.Class,
+                Spec = record.Spec
+            };
+
+            await _attendeeTableClient.UpsertEntityAsync(entity);
+        }
+
         // Create a new event
 
         [SlashCommand("mythic", "Schedule a Mythic+")]
@@ -16,6 +59,8 @@ namespace EchelonBot
             EchelonEvent event_ = NewEchelonEvent(EventType.Dungeon, time, name);
 
             event_.Id = GetNextAvailableEventId();
+
+            SaveEventToTableStorage(event_).Wait();
 
             return RespondToGameEventAsync(event_);
         }
@@ -27,6 +72,8 @@ namespace EchelonBot
 
             event_.Id = GetNextAvailableEventId();
 
+            SaveEventToTableStorage(event_).Wait();
+
             return RespondToGameEventAsync(event_);
         }
 
@@ -36,6 +83,8 @@ namespace EchelonBot
             EchelonEvent event_ = NewEchelonEvent(EventType.Meeting, time, name);
 
             event_.Id = GetNextAvailableEventId();
+
+            SaveEventToTableStorage(event_).Wait();
 
             return RespondToMeetingEventAsync(event_);
         }
@@ -155,6 +204,8 @@ namespace EchelonBot
             int recordId = GetNextAvailableAttendeeRecordId();
 
             record.Id = recordId;
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
 
             await RespondAsync("See you at the meeting!", ephemeral: true);
         }
@@ -285,6 +336,10 @@ namespace EchelonBot
             var role = GetRole(selectedClass, selectedSpec);
             var user = Context.User.GlobalName;
 
+            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, role, selectedClass, selectedSpec);
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
+
             // Confirm signup
             await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Replace("_", " ").ToUpper()} {selectedClass.ToUpper()}** ({role})", ephemeral: true);
         }
@@ -294,6 +349,10 @@ namespace EchelonBot
         {
             int eventId = int.Parse(customId);
 
+            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, "Absent");
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
+
             await RespondAsync("We'll miss you!", ephemeral: true);
         }
 
@@ -301,6 +360,10 @@ namespace EchelonBot
         public async Task HandleTentative(string customId)
         {
             int eventId = int.Parse(customId);
+
+            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, "Tentative");
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
 
             await RespondAsync("We hope to see you!", ephemeral: true);
         }
