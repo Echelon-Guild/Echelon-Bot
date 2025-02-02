@@ -85,6 +85,8 @@ namespace EchelonBot
         }
 
 
+
+
         private EchelonEvent NewEchelonEvent(EventType eventType, DateTime time, string name)
         {
             var event_ = new EchelonEvent(name, time.ToUniversalTime(), eventType);
@@ -202,7 +204,6 @@ namespace EchelonBot
             var message = await FollowupAsync(embed: embed, components: components);
             return message;
         }
-
 
         private int GetNextAvailableEventId()
         {
