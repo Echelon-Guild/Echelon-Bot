@@ -62,7 +62,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/echelon-bot:latest -f ./Echelon-Bot/Echelon-Bot/Dockerfile .
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/echelon-bot:latest -f ./Echelon-Bot/Echelon-Bot/Dockerfile ./Echelon-Bot
 
       - name: Push Docker image
         run: |
