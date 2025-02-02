@@ -27,6 +27,14 @@ using IHost host = Host.CreateDefaultBuilder(args)
         });
         services.AddHostedService<InteractionHandlingService>();    // Add the slash command handler
         services.AddHostedService<DiscordStartupService>();  // Add the discord startup service
+
+        services.AddSingleton(provider =>
+        {
+            var config = provider.GetRequiredService<IConfiguration>();
+            string storageConnectionString = config["AzureTableStorage:ConnectionString"] ?? Environment.GetEnvironmentVariable("ACR_TableStor");
+            return new TableServiceClient(storageConnectionString);
+        });
+
     })
     .Build();
 

@@ -2,43 +2,88 @@
 using Discord;
 using Discord.Interactions;
 using EchelonBot.Models;
+using EchelonBot.Models.Entities;
 using System.Text;
 
 namespace EchelonBot
 {
     public class ScheduleModule : InteractionModuleBase<SocketInteractionContext>
     {
+        private readonly TableClient _eventsTableClient;
+        private readonly TableClient _attendeeTableClient;
+
+        public ScheduleModule(TableServiceClient tableServiceClient)
+        {
+            _eventsTableClient = tableServiceClient.GetTableClient("EchelonEvents");
+            _eventsTableClient.CreateIfNotExists();
+
+            _attendeeTableClient = tableServiceClient.GetTableClient("AttendeeRecords");
+            _attendeeTableClient.CreateIfNotExists();
+        }
+
+        public async Task SaveEventToTableStorage(ulong messageId, EchelonEvent event_)
+        {
+            var entity = new EchelonEventEntity
+            {
+                PartitionKey = event_.EventType.ToString(),
+                RowKey = event_.Id.ToString(),
+                EventName = event_.Name,
+                EventDateTime = event_.EventDateTime,
+                Organizer = Context.User.Username,
+                MessageId = messageId
+            };
+
+            await _eventsTableClient.UpsertEntityAsync(entity);
+        }
+
+        public async Task SaveAttendeeRecordToTableStorage(AttendeeRecord record)
+        {
+            var entity = new AttendeeRecordEntity
+            {
+                PartitionKey = record.EventId.ToString(),
+                RowKey = record.DiscordName,
+                DiscordName = record.DiscordName,
+                DiscordDisplayName = record.DiscordDisplayName,
+                Role = record.Role,
+                Class = record.Class,
+                Spec = record.Spec
+            };
+
+            await _attendeeTableClient.UpsertEntityAsync(entity);
+        }
+
         // Create a new event
 
         [SlashCommand("mythic", "Schedule a Mythic+")]
-        public Task Mythic(DateTime time, string name)
+        public async Task Mythic(DateTime time, string name)
         {
-            EchelonEvent event_ = NewEchelonEvent(EventType.Dungeon, time, name);
-
+            var event_ = NewEchelonEvent(EventType.Dungeon, time, name);
             event_.Id = GetNextAvailableEventId();
 
-            return RespondToGameEventAsync(event_);
+            var message = await RespondToGameEventAsync(event_);
+            await SaveEventToTableStorage(message.Id, event_);
         }
 
         [SlashCommand("raid", "Schedule a Raid")]
-        public Task Raid(DateTime time, string name)
+        public async Task Raid(DateTime time, string name)
         {
-            EchelonEvent event_ = NewEchelonEvent(EventType.Raid, time, name);
-
+            var event_ = NewEchelonEvent(EventType.Raid, time, name);
             event_.Id = GetNextAvailableEventId();
 
-            return RespondToGameEventAsync(event_);
+            var message = await RespondToGameEventAsync(event_);
+            await SaveEventToTableStorage(message.Id, event_);
         }
 
         [SlashCommand("meeting", "Schedule a Meeting")]
-        public Task Meeting(DateTime time, string name)
+        public async Task Meeting(DateTime time, string name)
         {
-            EchelonEvent event_ = NewEchelonEvent(EventType.Meeting, time, name);
-
+            var event_ = NewEchelonEvent(EventType.Meeting, time, name);
             event_.Id = GetNextAvailableEventId();
 
-            return RespondToMeetingEventAsync(event_);
+            var message = await RespondToMeetingEventAsync(event_);
+            await SaveEventToTableStorage(message.Id, event_);
         }
+
 
         private EchelonEvent NewEchelonEvent(EventType eventType, DateTime time, string name)
         {
@@ -104,42 +149,101 @@ namespace EchelonBot
                 if (eventType == EventType.Meeting)
                     sb.AppendLine($"{attendee.Role} - {attendee.DiscordDisplayName}");
                 else
-                    sb.AppendLine($"{attendee.Role} - {attendee.DiscordDisplayName} - {attendee.Class.FirstCharToUpper()} {attendee.Spec.FirstCharToUpper()}");
+                {
+                    StringBuilder sb2 = new();
+                    sb2.Append($"{attendee.Role} - {attendee.DiscordDisplayName}");
+
+                    if (!string.IsNullOrWhiteSpace(attendee.Class))
+                    {
+                        sb2.Append($" - {attendee.Class}");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(attendee.Spec))
+                    {
+                        sb2.Append($" - {attendee.Spec}");
+                    }
+
+                    sb.AppendLine(sb2.ToString());
+                }
+                    
             }
 
             return sb.ToString();
         }
 
-        private Task RespondToGameEventAsync(EchelonEvent ecEvent)
+        private async Task<IUserMessage> RespondToGameEventAsync(EchelonEvent ecEvent)
         {
+            await DeferAsync(); // Defers the response to avoid immediate timeout
+
             MessageComponent components = new ComponentBuilder()
                 .WithButton("Sign Up", $"signup_event_{ecEvent.Id}")
-                .WithButton("Abscence", $"abscence_event_{ecEvent.Id}")
+                .WithButton("Absence", $"absence_event_{ecEvent.Id}")
                 .WithButton("Tentative", $"tentative_event_{ecEvent.Id}")
                 .Build();
 
             Embed embed = CreateEmbed(ecEvent);
 
-            return RespondAsync(embed: embed, components: components);
+            var message = await FollowupAsync(embed: embed, components: components); // Sends the actual message
+            return message;
         }
 
-        private Task RespondToMeetingEventAsync(EchelonEvent ecEvent)
+        private async Task<IUserMessage> RespondToMeetingEventAsync(EchelonEvent ecEvent)
         {
+            await DeferAsync(); // Defer the response first
+
             MessageComponent components = new ComponentBuilder()
                 .WithButton("Sign Up", $"signupmeeting_event_{ecEvent.Id}")
-                .WithButton("Abscence", $"abscence_event_{ecEvent.Id}")
+                .WithButton("Absence", $"absence_event_{ecEvent.Id}")
                 .WithButton("Tentative", $"tentative_event_{ecEvent.Id}")
                 .Build();
 
             Embed embed = CreateEmbed(ecEvent);
 
-            return RespondAsync(embed: embed, components: components);
+            var message = await FollowupAsync(embed: embed, components: components);
+            return message;
         }
+
 
         private int GetNextAvailableEventId()
         {
             return Random.Shared.Next();
 
+        }
+
+        public async Task UpdateEventEmbed(int eventId)
+        {
+            // Retrieve event entity (including MessageId)
+            var eventEntity = _eventsTableClient.Query<EchelonEventEntity>()
+                .FirstOrDefault(e => e.RowKey == eventId.ToString());
+
+            if (eventEntity == null)
+            {
+                await RespondAsync("Event not found or missing message ID.");
+                return;
+            }
+
+            // Retrieve the Discord message
+            var channel = Context.Client.GetChannel(Context.Channel.Id) as IMessageChannel;
+            var message = await channel.GetMessageAsync(eventEntity.MessageId) as IUserMessage;
+
+            if (message == null)
+            {
+                await RespondAsync("Message not found.");
+                return;
+            }
+
+            // Fetch all attendees from Azure Table Storage
+            var attendees = _attendeeTableClient.Query<AttendeeRecordEntity>()
+                .Where(a => a.PartitionKey == eventId.ToString())
+                .Select(a => new AttendeeRecord(eventId, a.DiscordName, a.DiscordDisplayName, a.Role, a.Class, a.Spec))
+                .ToList();
+
+            // Rebuild the embed with updated attendees
+            var updatedEvent = new EchelonEvent(eventEntity.EventName, eventEntity.EventDateTime, Enum.Parse<EventType>(eventEntity.PartitionKey));
+            var embed = CreateEmbed(updatedEvent, attendees);
+
+            // Modify the existing message with the updated embed
+            await message.ModifyAsync(msg => msg.Embed = embed);
         }
 
 
@@ -155,6 +259,10 @@ namespace EchelonBot
             int recordId = GetNextAvailableAttendeeRecordId();
 
             record.Id = recordId;
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
+
+            await UpdateEventEmbed(eventId);
 
             await RespondAsync("See you at the meeting!", ephemeral: true);
         }
@@ -285,14 +393,26 @@ namespace EchelonBot
             var role = GetRole(selectedClass, selectedSpec);
             var user = Context.User.GlobalName;
 
+            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, role, selectedClass, selectedSpec);
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
+
+            await UpdateEventEmbed(eventId);
+
             // Confirm signup
             await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Replace("_", " ").ToUpper()} {selectedClass.ToUpper()}** ({role})", ephemeral: true);
         }
 
-        [ComponentInteraction("abscence_event_*")]
+        [ComponentInteraction("absence_event_*")]
         public async Task HandleAbscence(string customId)
         {
             int eventId = int.Parse(customId);
+
+            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, "Absent", string.Empty, string.Empty);
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
+
+            await UpdateEventEmbed(eventId);
 
             await RespondAsync("We'll miss you!", ephemeral: true);
         }
@@ -301,6 +421,12 @@ namespace EchelonBot
         public async Task HandleTentative(string customId)
         {
             int eventId = int.Parse(customId);
+
+            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, "Tentative", string.Empty, string.Empty);
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
+
+            await UpdateEventEmbed(eventId);
 
             await RespondAsync("We hope to see you!", ephemeral: true);
         }
