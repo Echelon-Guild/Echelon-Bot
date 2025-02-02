@@ -42,6 +42,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: List project files for debugging
+        run: ls -R
+
       - name: Login to Azure Container Registry
         uses: azure/docker-login@v1
         with:
@@ -51,7 +54,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/echelon-bot:latest -f ./Echelon-Bot/Echelon-Bot/Dockerfile .
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/echelon-bot:latest -f ./Echelon-Bot/Echelon-Bot/Dockerfile ./Echelon-Bot/Echelon-Bot
 
       - name: Push Docker image
         run: |
