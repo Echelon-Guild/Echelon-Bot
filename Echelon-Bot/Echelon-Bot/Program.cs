@@ -31,7 +31,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
         services.AddSingleton(provider =>
         {
             var config = provider.GetRequiredService<IConfiguration>();
-            string storageConnectionString = config["AzureTableStorage:ConnectionString"];
+            string storageConnectionString = config["AzureTableStorage:ConnectionString"] ?? Environment.GetEnvironmentVariable("ACR_TableStor");
             return new TableServiceClient(storageConnectionString);
         });
 
