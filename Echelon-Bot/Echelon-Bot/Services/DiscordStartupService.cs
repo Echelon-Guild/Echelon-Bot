@@ -25,7 +25,7 @@ namespace EchelonBot
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await _discord.LoginAsync(TokenType.Bot, _config["token"]);
+            await _discord.LoginAsync(TokenType.Bot, _config["token"] ?? Environment.GetEnvironmentVariable("DISCORD_TOKEN"));
             await _discord.StartAsync();
         }
 

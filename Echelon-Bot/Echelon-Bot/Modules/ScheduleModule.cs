@@ -1,23 +1,21 @@
-﻿using Discord;
+﻿using Azure.Data.Tables;
+using Discord;
 using Discord.Interactions;
-using EchelonBot.Data;
 using EchelonBot.Models;
+using System.Text;
 
 namespace EchelonBot
 {
     public class ScheduleModule : InteractionModuleBase<SocketInteractionContext>
     {
-        private readonly EchelonBotDbContext _db;
-
-        public ScheduleModule(EchelonBotDbContext echelonBotDbContext)
-        {
-            _db = echelonBotDbContext;
-        }
+        // Create a new event
 
         [SlashCommand("mythic", "Schedule a Mythic+")]
         public Task Mythic(DateTime time, string name)
         {
             EchelonEvent event_ = NewEchelonEvent(EventType.Dungeon, time, name);
+
+            event_.Id = GetNextAvailableEventId();
 
             return RespondToGameEventAsync(event_);
         }
@@ -27,6 +25,8 @@ namespace EchelonBot
         {
             EchelonEvent event_ = NewEchelonEvent(EventType.Raid, time, name);
 
+            event_.Id = GetNextAvailableEventId();
+
             return RespondToGameEventAsync(event_);
         }
 
@@ -35,24 +35,19 @@ namespace EchelonBot
         {
             EchelonEvent event_ = NewEchelonEvent(EventType.Meeting, time, name);
 
+            event_.Id = GetNextAvailableEventId();
+
             return RespondToMeetingEventAsync(event_);
         }
 
         private EchelonEvent NewEchelonEvent(EventType eventType, DateTime time, string name)
         {
-            int id = GetNextAvailableId();
-
-            var event_ = new EchelonEvent(id, name, time.ToUniversalTime(), eventType);
+            var event_ = new EchelonEvent(name, time.ToUniversalTime(), eventType);
 
             return event_;
         }
 
-        private int GetNextAvailableId()
-        {
-            return Random.Shared.Next();
-        }
-
-        private Embed CreateEmbed(EchelonEvent ecEvent)
+        private Embed CreateEmbed(EchelonEvent ecEvent, IEnumerable<AttendeeRecord> attendees = null)
         {
             Color color;
 
@@ -80,17 +75,39 @@ namespace EchelonBot
                     }
             }
 
-            Embed embed = new EmbedBuilder()
+            EmbedBuilder embed = new EmbedBuilder()
                 .WithTitle(ecEvent.Name)
                 .WithDescription($"This is a {ecEvent.EventType.ToString()} event, scheduled for {ecEvent.EventDateTime.ToUniversalTime()}.")
                 .WithColor(color)
                 .AddField("Event Type", ecEvent.EventType.ToString(), true)
                 .AddField("Organizer", Context.User.GlobalName, true)
                 .WithThumbnailUrl(Context.User.GetAvatarUrl())
-                .WithFooter("Powered by Frenzied Regeneration")
-                .Build();
+                .WithFooter("Powered by Frenzied Regeneration");
+                
+            if (attendees != null)
+            {
+                embed.AddField("Attendees", GetAttendeeString(attendees, ecEvent.EventType));
+            }
 
-            return embed;
+            return embed.Build();
+        }
+
+        private string GetAttendeeString(IEnumerable<AttendeeRecord> attendees, EventType eventType)
+        {
+            if (!attendees.Any())
+                return string.Empty;
+
+            StringBuilder sb = new();
+
+            foreach (AttendeeRecord attendee in attendees)
+            {
+                if (eventType == EventType.Meeting)
+                    sb.AppendLine($"{attendee.Role} - {attendee.DiscordDisplayName}");
+                else
+                    sb.AppendLine($"{attendee.Role} - {attendee.DiscordDisplayName} - {attendee.Class.FirstCharToUpper()} {attendee.Spec.FirstCharToUpper()}");
+            }
+
+            return sb.ToString();
         }
 
         private Task RespondToGameEventAsync(EchelonEvent ecEvent)
@@ -119,10 +136,25 @@ namespace EchelonBot
             return RespondAsync(embed: embed, components: components);
         }
 
+        private int GetNextAvailableEventId()
+        {
+            return Random.Shared.Next();
+
+        }
+
+
+        // Record response to a meeting
+
         [ComponentInteraction("signupmeeting_*")]
         public async Task HandleMeetingSignup(string customId)
         {
             int eventId = int.Parse(customId.Split('_')[1]);
+
+            AttendeeRecord record = new AttendeeRecord(eventId, Context.User.Username, Context.User.GlobalName, "Attendee");
+
+            int recordId = GetNextAvailableAttendeeRecordId();
+
+            record.Id = recordId;
 
             await RespondAsync("See you at the meeting!", ephemeral: true);
         }
@@ -255,9 +287,6 @@ namespace EchelonBot
 
             // Confirm signup
             await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Replace("_", " ").ToUpper()} {selectedClass.ToUpper()}** ({role})", ephemeral: true);
-
-            // Update event embed
-            //await UpdateEventEmbed(eventId);
         }
 
         [ComponentInteraction("abscence_event_*")]
@@ -286,6 +315,12 @@ namespace EchelonBot
             if (tanks.Contains(fullSpec)) return "Tank";
             if (healers.Contains(fullSpec)) return "Healer";
             return "DPS";
+        }
+
+        private int GetNextAvailableAttendeeRecordId()
+        {
+            return Random.Shared.Next();
+
         }
     }
 }
