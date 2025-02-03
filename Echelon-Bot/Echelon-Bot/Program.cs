@@ -30,9 +30,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
         services.AddSingleton(provider =>
         {
-            var config = provider.GetRequiredService<IConfiguration>();
-            string storageConnectionString = config["AzureTableStorage:ConnectionString"] ?? Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
-            return new TableServiceClient(storageConnectionString);
+            return new TableServiceClient(Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING"));
         });
 
     })
