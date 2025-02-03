@@ -14,14 +14,14 @@ using IHost host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices((context, services) =>
     {
-        services.AddSingleton<DiscordSocketClient>();       // Add the discord client to services
+        services.AddSingleton<DiscordSocketClient>();
         services.AddSingleton(provider =>
         {
             var discord = provider.GetRequiredService<DiscordSocketClient>();
             return new InteractionService(discord);
         });
-        services.AddHostedService<InteractionHandlingService>();    // Add the slash command handler
-        services.AddHostedService<DiscordStartupService>();  // Add the discord startup service
+        services.AddHostedService<InteractionHandlingService>();
+        services.AddHostedService<DiscordStartupService>();
 
         services.AddSingleton(provider =>
         {
