@@ -399,3 +399,4 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+/Echelon-Bot/Echelon-Bot/Properties/launchSettings.json

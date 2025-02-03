@@ -11,13 +11,11 @@ namespace EchelonBot
     public class DiscordStartupService : IHostedService
     {
         private readonly DiscordSocketClient _discord;
-        private readonly IConfiguration _config;
         private readonly ILogger<DiscordSocketClient> _logger;
 
-        public DiscordStartupService(DiscordSocketClient discord, IConfiguration config, ILogger<DiscordSocketClient> logger)
+        public DiscordStartupService(DiscordSocketClient discord, ILogger<DiscordSocketClient> logger)
         {
             _discord = discord;
-            _config = config;
             _logger = logger;
 
             _discord.Log += msg => LogHelper.OnLogAsync(_logger, msg);
@@ -25,7 +23,7 @@ namespace EchelonBot
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await _discord.LoginAsync(TokenType.Bot, _config["token"] ?? Environment.GetEnvironmentVariable("DISCORD_TOKEN"));
+            await _discord.LoginAsync(TokenType.Bot, Environment.GetEnvironmentVariable("DISCORD_TOKEN"));
             await _discord.StartAsync();
         }
 

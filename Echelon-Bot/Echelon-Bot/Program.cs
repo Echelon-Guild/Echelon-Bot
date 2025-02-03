@@ -9,11 +9,6 @@ using Microsoft.Extensions.Hosting;
 using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration(config =>
     {
-        if (File.Exists("appsettings.json"))
-        {
-            config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-        }
-
         // Always load environment variables (for Azure)
         config.AddEnvironmentVariables();
     })
@@ -30,9 +25,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
         services.AddSingleton(provider =>
         {
-            var config = provider.GetRequiredService<IConfiguration>();
-            string storageConnectionString = config["AzureTableStorage:ConnectionString"] ?? Environment.GetEnvironmentVariable("ACR_TableStor");
-            return new TableServiceClient(storageConnectionString);
+            return new TableServiceClient(Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING"));
         });
 
     })
