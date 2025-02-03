@@ -1,14 +1,10 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using EchelonBot;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace EchelonBot
 {
@@ -40,7 +36,7 @@ namespace EchelonBot
         {
             ulong serverId = ulong.Parse(Environment.GetEnvironmentVariable("DISCORD_SERVER_ID"));
 
-            _discord.Ready += () => _interactions.RegisterCommandsToGuildAsync(serverId, true); // _interactions.RegisterCommandsGloballyAsync(true);
+            _discord.Ready += () => _interactions.RegisterCommandsToGuildAsync(serverId, true);
             _discord.InteractionCreated += OnInteractionAsync;
 
             await _interactions.AddModulesAsync(Assembly.GetEntryAssembly(), _services);

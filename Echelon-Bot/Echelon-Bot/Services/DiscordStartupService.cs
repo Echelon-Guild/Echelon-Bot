@@ -1,10 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace EchelonBot
 {
