@@ -414,6 +414,7 @@ namespace EchelonBot
             {
                 if (ecEvent.EventType == EventType.Meeting)
                 {
+                    IEnumerable<AttendeeRecord> attending = attendees.Where(e => e.Role.ToLower() == "attendee");
                     embed.AddField("Attendees", GetMeetingAttendeeString(attendees));
                 }
                 else
@@ -421,6 +422,7 @@ namespace EchelonBot
                     IEnumerable<AttendeeRecord> tanks = attendees.Where(e => e.Role.ToLower() == "tank");
                     IEnumerable<AttendeeRecord> healers = attendees.Where(e => e.Role.ToLower() == "healer");
                     IEnumerable<AttendeeRecord> dps = attendees.Where(e => e.Role.ToLower() == "dps");
+
 
                     if (tanks.Any())
                         embed.AddField("Tanks", GetGameEventAttendeeString(tanks));
@@ -432,6 +434,15 @@ namespace EchelonBot
                         embed.AddField("DPS", GetGameEventAttendeeString(dps));
                 }
 
+                IEnumerable<AttendeeRecord> absent = attendees.Where(e => e.Role.ToLower() == "absent");
+
+                if (absent.Any())
+                    embed.AddField("Absent", GetMeetingAttendeeString(absent));
+
+                IEnumerable<AttendeeRecord> tentative = attendees.Where(e => e.Role.ToLower() == "tentative");
+
+                if (tentative.Any())
+                    embed.AddField("Tentative", GetMeetingAttendeeString(tentative));
             }
 
             return embed.Build();
@@ -443,6 +454,7 @@ namespace EchelonBot
                 return string.Empty;
 
             StringBuilder sb = new();
+
             foreach (AttendeeRecord attendee in attendees)
             {
                 sb.AppendLine(attendee.DiscordDisplayName);
