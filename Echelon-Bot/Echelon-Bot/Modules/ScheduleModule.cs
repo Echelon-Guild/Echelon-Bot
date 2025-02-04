@@ -12,7 +12,7 @@ namespace EchelonBot
         private readonly TableClient _eventsTableClient;
         private readonly TableClient _attendeeTableClient;
 
-        private int[] _longMonths = [1,3,5,7,8,10,12];
+        private int[] _longMonths = [1, 3, 5, 7, 8, 10, 12];
 
         private static Dictionary<int, ScheduleEventRequest> _requestWorkingCache = new Dictionary<int, ScheduleEventRequest>();
 
@@ -409,44 +409,71 @@ namespace EchelonBot
                 .AddField("Organizer", Context.User.GlobalName, true)
                 .WithThumbnailUrl(Context.User.GetAvatarUrl())
                 .WithFooter("Powered by Frenzied Regeneration");
-                
+
             if (attendees != null)
             {
-                embed.AddField("Attendees", GetAttendeeString(attendees, ecEvent.EventType));
+                if (ecEvent.EventType == EventType.Meeting)
+                {
+                    embed.AddField("Attendees", GetMeetingAttendeeString(attendees));
+                }
+                else
+                {
+                    IEnumerable<AttendeeRecord> tanks = attendees.Where(e => e.Role.ToLower() == "tank");
+                    IEnumerable<AttendeeRecord> healers = attendees.Where(e => e.Role.ToLower() == "healer");
+                    IEnumerable<AttendeeRecord> dps = attendees.Where(e => e.Role.ToLower() == "dps");
+
+                    if (tanks.Any())
+                        embed.AddField("Tanks", GetGameEventAttendeeString(tanks));
+
+                    if (healers.Any())
+                        embed.AddField("Healers", GetGameEventAttendeeString(healers));
+
+                    if (dps.Any())
+                        embed.AddField("DPS", GetGameEventAttendeeString(dps));
+                }
+
             }
 
             return embed.Build();
         }
 
-        private string GetAttendeeString(IEnumerable<AttendeeRecord> attendees, EventType eventType)
+        private string GetMeetingAttendeeString(IEnumerable<AttendeeRecord> attendees)
         {
             if (!attendees.Any())
                 return string.Empty;
 
             StringBuilder sb = new();
-
             foreach (AttendeeRecord attendee in attendees)
             {
-                if (eventType == EventType.Meeting)
-                    sb.AppendLine($"{attendee.Role} - {attendee.DiscordDisplayName}");
-                else
+                sb.AppendLine(attendee.DiscordDisplayName);
+            }
+
+            return sb.ToString() ?? string.Empty;
+        }
+
+        private string GetGameEventAttendeeString(IEnumerable<AttendeeRecord> attendees)
+        {
+            StringBuilder sb = new();
+            foreach (AttendeeRecord attendee in attendees)
+            {
+                sb.AppendLine($"{attendee.DiscordDisplayName} - {NamePrettyfier(attendee.Class)} - {NamePrettyfier(attendee.Spec)}");
+            }
+
+            return sb.ToString() ?? string.Empty;
+        }
+
+        private string NamePrettyfier(string name)
+        {
+            string[] splits = name.Split("_");
+
+            StringBuilder sb = new(splits[0].FirstCharToUpper());
+
+            if (splits.Length > 1)
+            {
+                for (int i = 1; i < splits.Length; i++)
                 {
-                    StringBuilder sb2 = new();
-                    sb2.Append($"{attendee.Role} - {attendee.DiscordDisplayName}");
-
-                    if (!string.IsNullOrWhiteSpace(attendee.Class))
-                    {
-                        sb2.Append($" - {attendee.Class}");
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(attendee.Spec))
-                    {
-                        sb2.Append($" - {attendee.Spec}");
-                    }
-
-                    sb.AppendLine(sb2.ToString());
+                    sb.Append($" {splits[i].FirstCharToUpper()}");
                 }
-                    
             }
 
             return sb.ToString();
@@ -716,7 +743,7 @@ namespace EchelonBot
             var tanks = new HashSet<string> { "Blood Death Knight", "Guardian Druid", "Brewmaster Monk", "Protection Paladin", "Protection Warrior", "Vengeance Demon Hunter" };
             var healers = new HashSet<string> { "Restoration Druid", "Mistweaver Monk", "Holy Paladin", "Holy Priest", "Discipline Priest", "Restoration Shaman", "Preservation Evoker" };
 
-            string fullSpec = $"{spec.FirstCharToUpper()} {playerClass.FirstCharToUpper()}";
+            string fullSpec = $"{NamePrettyfier(spec)} {NamePrettyfier(playerClass)}";
 
             if (tanks.Contains(fullSpec)) return "Tank";
             if (healers.Contains(fullSpec)) return "Healer";
