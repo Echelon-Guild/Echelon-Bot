@@ -12,6 +12,8 @@ namespace EchelonBot
         private readonly TableClient _eventsTableClient;
         private readonly TableClient _attendeeTableClient;
 
+        private int[] _longMonths = [1,3,5,7,8,10,12];
+
         public ScheduleModule(TableServiceClient tableServiceClient)
         {
             _eventsTableClient = tableServiceClient.GetTableClient("EchelonEvents");
@@ -64,6 +66,261 @@ namespace EchelonBot
             await SaveEventToTableStorage(message.Id, event_);
         }
 
+        [SlashCommand("newevent", "Test new event")]
+        public async Task NewEvent(string name)
+        {
+            var monthDropdown = new SelectMenuBuilder()
+                .WithCustomId($"month_select")
+                .WithPlaceholder("Select the month of the event")
+                .AddOption(DateTime.Now.ToString("MMMM"), DateTime.Now.Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(1).ToString("MMMM"), DateTime.Now.AddMonths(1).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(2).ToString("MMMM"), DateTime.Now.AddMonths(2).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(3).ToString("MMMM"), DateTime.Now.AddMonths(3).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(4).ToString("MMMM"), DateTime.Now.AddMonths(4).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(5).ToString("MMMM"), DateTime.Now.AddMonths(5).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(6).ToString("MMMM"), DateTime.Now.AddMonths(6).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(7).ToString("MMMM"), DateTime.Now.AddMonths(7).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(8).ToString("MMMM"), DateTime.Now.AddMonths(8).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(9).ToString("MMMM"), DateTime.Now.AddMonths(9).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(10).ToString("MMMM"), DateTime.Now.AddMonths(10).Month.ToString())
+                .AddOption(DateTime.Now.AddMonths(11).ToString("MMMM"), DateTime.Now.AddMonths(11).Month.ToString());
+
+            var builder = new ComponentBuilder().WithSelectMenu(monthDropdown);
+
+            await RespondAsync("Select the month of the event:", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("month_select")]
+        public async Task HandleMonthSelected(string month)
+        {
+            var weekDropdown = new SelectMenuBuilder()
+                .WithCustomId($"week_select_month_{month}")
+                .WithPlaceholder("Select the week of the event");
+
+            int _month = int.Parse(month);
+
+            AddWeekOptions(weekDropdown, _month);
+
+            var builder = new ComponentBuilder().WithSelectMenu(weekDropdown);
+
+            await RespondAsync("Select the week of the event:", components: builder.Build(), ephemeral: true);
+        }
+        private void AddWeekOptions(SelectMenuBuilder builder, int month)
+        {
+            builder.AddOption("Day 1-7", "1")
+                .AddOption("Day 8-14", "2")
+                .AddOption("Day 15-21", "3")
+                .AddOption("Day 22-28", "4");
+
+            if (_longMonths.Contains(month))
+            {
+                builder.AddOption("Day 29-31", "5");
+            }
+            else if (month != 2)
+            {
+                //TODO: Handle leap year
+                builder.AddOption("Day 29-30", "5");
+            }
+        }
+
+        [ComponentInteraction("week_select_*")]
+        public async Task HandleWeekSelected(string customId, string week)
+        {
+            int month = int.Parse(customId.Split("_")[1]);
+
+            var dayDropdown = new SelectMenuBuilder()
+                .WithCustomId($"day_select_month_{month}_week_{week}")
+                .WithPlaceholder("Select the day of the event");
+
+            int _week = int.Parse(week);
+
+            AddDayOptions(dayDropdown, month, _week);
+
+            var builder = new ComponentBuilder().WithSelectMenu(dayDropdown);
+
+            await RespondAsync("Select the day of the event:", components: builder.Build(), ephemeral: true);
+        }
+
+        private void AddDayOptions(SelectMenuBuilder builder, int month, int week)
+        {
+            int startingDay = 0;
+
+            if (week == 1)
+            {
+                startingDay = 1;
+            }
+            else if (week == 2)
+            {
+                startingDay = 8;
+            }
+            else if (week == 3)
+            {
+                startingDay = 15;
+            }
+            else if (week == 4)
+            {
+                startingDay = 22;
+            }
+            else if (week == 5)
+            {
+                startingDay = 29;
+            }
+            else
+            {
+                throw new Exception("Something went horribly wrong. You got a week number that isn't 1-5");
+            }
+
+            int numberOfDaysInWeek = 7;
+
+            if (week == 5)
+            {
+                if (_longMonths.Contains(month))
+                {
+                    numberOfDaysInWeek = 3;
+                }
+                else
+                {
+                    numberOfDaysInWeek = 2;
+                }
+
+                //TODO: If leap year, numberOfDaysInWeek is 1.
+            }
+
+            for (int i = 0; i < numberOfDaysInWeek; i++) 
+            {
+                int day = startingDay + i;
+
+                int year = DateTime.Now.Year;
+
+                if (month < DateTime.Now.Month)
+                    ++year;
+
+                DateTime date = new DateTime(year, month, day);
+
+                string dayString = date.ToString("dddd, MMMM dd");
+
+                builder.AddOption(dayString, day.ToString());
+            }
+        }
+
+        [ComponentInteraction("day_select_*")]
+        public async Task HandleDaySelected(string customId, string day)
+        {
+            string[] splits = customId.Split('_');
+
+            int month = int.Parse(splits[1]);
+            int week = int.Parse(splits[3]);
+
+            int _day = int.Parse(day);
+
+            int year = DateTime.Now.Year;
+
+            if (month < DateTime.Now.Month)
+            {
+                ++year;
+            }
+
+            var hourDropdown = new SelectMenuBuilder()
+                .WithCustomId($"hour_select_month_{month}_week_{week}_day_{day}")
+                .WithPlaceholder("Select the hour of the event");
+
+            AddHourOptions(hourDropdown);
+
+            var builder = new ComponentBuilder().WithSelectMenu(hourDropdown);
+
+            await RespondAsync("Select the hour of the event:", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("hour_select_*")]
+        public async Task HandleHourSelected(string customId, string hour)
+        {
+            string[] splits = customId.Split('_');
+
+            int month = int.Parse(splits[1]);
+            int week = int.Parse(splits[3]);
+            int day = int.Parse(splits[5]);
+
+            var ampmDropdown = new SelectMenuBuilder()
+                .WithCustomId($"ampm_select_month_{month}_week_{week}_day_{day}_hour_{hour}")
+                .WithPlaceholder("AM or PM")
+                .AddOption("AM", "AM")
+                .AddOption("PM", "PM");
+
+            var builder = new ComponentBuilder().WithSelectMenu(ampmDropdown);
+
+            await RespondAsync("AM or PM?", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("ampm_select_*")]
+        public async Task HandleAmPmSelected(string customId, string amOrPm)
+        {
+            string[] splits = customId.Split('_');
+
+            int month = int.Parse(splits[1]);
+            int week = int.Parse(splits[3]);
+            int day = int.Parse(splits[5]);
+            int hour = int.Parse(splits[7]);
+
+            var minuteDropdown = new SelectMenuBuilder()
+                .WithCustomId($"minute_select_month_{month}_week_{week}_day_{day}_hour_{hour}_ampm_{amOrPm}")
+                .WithPlaceholder("Select the minute of the event")
+                .AddOption("00", "00")
+                .AddOption("05", "05")
+                .AddOption("10", "10")
+                .AddOption("15", "15")
+                .AddOption("20", "20")
+                .AddOption("25", "25")
+                .AddOption("30", "30")
+                .AddOption("35", "35")
+                .AddOption("40", "40")
+                .AddOption("45", "45")
+                .AddOption("50", "50")
+                .AddOption("55", "55");
+
+            var builder = new ComponentBuilder().WithSelectMenu(minuteDropdown);
+
+            await RespondAsync("Select the minute of the event:", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("minute_select_*")]
+        public async Task HandleMinuteSelected(string customId, string minute)
+        {
+            string[] splits = customId.Split('_');
+
+            int month = int.Parse(splits[1]);
+            int week = int.Parse(splits[3]);
+            int day = int.Parse(splits[5]);
+            int hour = int.Parse(splits[7]);
+            string amOrPm = splits[9];
+            int _min = int.Parse(minute);
+
+            int year = DateTime.Now.Year;
+
+            if (month < DateTime.Now.Month)
+                ++year;
+
+            DateTime eventDate = new DateTime(year, month, day, hour, _min, 0);
+
+            await RespondAsync($"Event would be scheduled for {eventDate.ToString()}");
+        }
+
+        private void AddHourOptions(SelectMenuBuilder builder)
+        {
+            builder.AddOption("12", "12");
+            builder.AddOption("1", "1");
+            builder.AddOption("2", "2");
+            builder.AddOption("3", "3");
+            builder.AddOption("4", "4");
+            builder.AddOption("5", "5");
+            builder.AddOption("6", "6");
+            builder.AddOption("7", "7");
+            builder.AddOption("8", "8");
+            builder.AddOption("9", "9");
+            builder.AddOption("10", "10");
+            builder.AddOption("11", "11");
+        }
+
+
         [SlashCommand("raid", "Schedule a Raid")]
         public async Task Raid(DateTime time, string name)
         {
@@ -83,8 +340,6 @@ namespace EchelonBot
             var message = await RespondToMeetingEventAsync(event_);
             await SaveEventToTableStorage(message.Id, event_);
         }
-
-
 
 
         private EchelonEvent NewEchelonEvent(EventType eventType, DateTime time, string name)
