@@ -14,6 +14,8 @@ namespace EchelonBot
 
         private int[] _longMonths = [1,3,5,7,8,10,12];
 
+        private static Dictionary<int, ScheduleEventRequest> _requestWorkingCache = new Dictionary<int, ScheduleEventRequest>();
+
         public ScheduleModule(TableServiceClient tableServiceClient)
         {
             _eventsTableClient = tableServiceClient.GetTableClient("EchelonEvents");
@@ -56,21 +58,55 @@ namespace EchelonBot
 
         // Create a new event
 
-        [SlashCommand("mythic", "Schedule a Mythic+")]
-        public async Task Mythic(DateTime time, string name)
-        {
-            var event_ = NewEchelonEvent(EventType.Dungeon, time, name);
-            event_.Id = GetNextAvailableEventId();
+        // The below is a chain. You trigger it with a slash command then respond to the dropdowns until you reach the end
+        // I tried to keep things in order.
 
-            var message = await RespondToGameEventAsync(event_);
-            await SaveEventToTableStorage(message.Id, event_);
+        [SlashCommand("mythic", "Schedule a Mythic+")]
+        public async Task Mythic(string name)
+        {
+            ScheduleEventRequest request = new();
+
+            request.Name = name;
+            request.Id = GetNextAvailableEventId();
+            request.EventType = EventType.Dungeon;
+
+            _requestWorkingCache.Add(request.Id, request);
+
+            await RespondToTypeSelected(request.Id);
         }
 
-        [SlashCommand("newevent", "Test new event")]
-        public async Task NewEvent(string name)
+        [SlashCommand("raid", "Schedule a Raid")]
+        public async Task Raid(string name)
+        {
+            ScheduleEventRequest request = new();
+
+            request.Name = name;
+            request.Id = GetNextAvailableEventId();
+            request.EventType = EventType.Raid;
+
+            _requestWorkingCache.Add(request.Id, request);
+
+            await RespondToTypeSelected(request.Id);
+        }
+
+        [SlashCommand("meeting", "Schedule a Meeting")]
+        public async Task Meeting(string name)
+        {
+            ScheduleEventRequest request = new();
+
+            request.Name = name;
+            request.Id = GetNextAvailableEventId();
+            request.EventType = EventType.Meeting;
+
+            _requestWorkingCache.Add(request.Id, request);
+
+            await RespondToTypeSelected(request.Id);
+        }
+
+        private async Task RespondToTypeSelected(int requestId)
         {
             var monthDropdown = new SelectMenuBuilder()
-                .WithCustomId($"month_select")
+                .WithCustomId($"month_select_{requestId}")
                 .WithPlaceholder("Select the month of the event")
                 .AddOption(DateTime.Now.ToString("MMMM"), DateTime.Now.Month.ToString())
                 .AddOption(DateTime.Now.AddMonths(1).ToString("MMMM"), DateTime.Now.AddMonths(1).Month.ToString())
@@ -90,14 +126,18 @@ namespace EchelonBot
             await RespondAsync("Select the month of the event:", components: builder.Build(), ephemeral: true);
         }
 
-        [ComponentInteraction("month_select")]
-        public async Task HandleMonthSelected(string month)
+        [ComponentInteraction("month_select_*")]
+        public async Task HandleMonthSelected(string customId, string month)
         {
-            var weekDropdown = new SelectMenuBuilder()
-                .WithCustomId($"week_select_month_{month}")
-                .WithPlaceholder("Select the week of the event");
+            int eventId = int.Parse(customId);
 
             int _month = int.Parse(month);
+
+            _requestWorkingCache[eventId].Month = _month;
+
+            var weekDropdown = new SelectMenuBuilder()
+                .WithCustomId($"week_select_{eventId}")
+                .WithPlaceholder("Select the week of the event");
 
             AddWeekOptions(weekDropdown, _month);
 
@@ -126,15 +166,16 @@ namespace EchelonBot
         [ComponentInteraction("week_select_*")]
         public async Task HandleWeekSelected(string customId, string week)
         {
-            int month = int.Parse(customId.Split("_")[1]);
-
-            var dayDropdown = new SelectMenuBuilder()
-                .WithCustomId($"day_select_month_{month}_week_{week}")
-                .WithPlaceholder("Select the day of the event");
-
+            int eventId = int.Parse(customId);
             int _week = int.Parse(week);
 
-            AddDayOptions(dayDropdown, month, _week);
+            _requestWorkingCache[eventId].Week = _week;
+
+            var dayDropdown = new SelectMenuBuilder()
+                .WithCustomId($"day_select_{eventId}")
+                .WithPlaceholder("Select the day of the event");
+
+            AddDayOptions(dayDropdown, _requestWorkingCache[eventId].Month, _week);
 
             var builder = new ComponentBuilder().WithSelectMenu(dayDropdown);
 
@@ -186,7 +227,7 @@ namespace EchelonBot
                 //TODO: If leap year, numberOfDaysInWeek is 1.
             }
 
-            for (int i = 0; i < numberOfDaysInWeek; i++) 
+            for (int i = 0; i < numberOfDaysInWeek; i++)
             {
                 int day = startingDay + i;
 
@@ -206,22 +247,13 @@ namespace EchelonBot
         [ComponentInteraction("day_select_*")]
         public async Task HandleDaySelected(string customId, string day)
         {
-            string[] splits = customId.Split('_');
-
-            int month = int.Parse(splits[1]);
-            int week = int.Parse(splits[3]);
-
+            int eventId = int.Parse(customId);
             int _day = int.Parse(day);
 
-            int year = DateTime.Now.Year;
-
-            if (month < DateTime.Now.Month)
-            {
-                ++year;
-            }
+            _requestWorkingCache[eventId].Day = _day;
 
             var hourDropdown = new SelectMenuBuilder()
-                .WithCustomId($"hour_select_month_{month}_week_{week}_day_{day}")
+                .WithCustomId($"hour_select_{eventId}")
                 .WithPlaceholder("Select the hour of the event");
 
             AddHourOptions(hourDropdown);
@@ -231,38 +263,32 @@ namespace EchelonBot
             await RespondAsync("Select the hour of the event:", components: builder.Build(), ephemeral: true);
         }
 
+        private void AddHourOptions(SelectMenuBuilder builder)
+        {
+            builder.AddOption("12", "12");
+            builder.AddOption("1", "1");
+            builder.AddOption("2", "2");
+            builder.AddOption("3", "3");
+            builder.AddOption("4", "4");
+            builder.AddOption("5", "5");
+            builder.AddOption("6", "6");
+            builder.AddOption("7", "7");
+            builder.AddOption("8", "8");
+            builder.AddOption("9", "9");
+            builder.AddOption("10", "10");
+            builder.AddOption("11", "11");
+        }
+
         [ComponentInteraction("hour_select_*")]
         public async Task HandleHourSelected(string customId, string hour)
         {
-            string[] splits = customId.Split('_');
+            int eventId = int.Parse(customId);
+            int _hour = int.Parse(hour);
 
-            int month = int.Parse(splits[1]);
-            int week = int.Parse(splits[3]);
-            int day = int.Parse(splits[5]);
-
-            var ampmDropdown = new SelectMenuBuilder()
-                .WithCustomId($"ampm_select_month_{month}_week_{week}_day_{day}_hour_{hour}")
-                .WithPlaceholder("AM or PM")
-                .AddOption("AM", "AM")
-                .AddOption("PM", "PM");
-
-            var builder = new ComponentBuilder().WithSelectMenu(ampmDropdown);
-
-            await RespondAsync("AM or PM?", components: builder.Build(), ephemeral: true);
-        }
-
-        [ComponentInteraction("ampm_select_*")]
-        public async Task HandleAmPmSelected(string customId, string amOrPm)
-        {
-            string[] splits = customId.Split('_');
-
-            int month = int.Parse(splits[1]);
-            int week = int.Parse(splits[3]);
-            int day = int.Parse(splits[5]);
-            int hour = int.Parse(splits[7]);
+            _requestWorkingCache[eventId].Hour = _hour;
 
             var minuteDropdown = new SelectMenuBuilder()
-                .WithCustomId($"minute_select_month_{month}_week_{week}_day_{day}_hour_{hour}_ampm_{amOrPm}")
+                .WithCustomId($"minute_select_{eventId}")
                 .WithPlaceholder("Select the minute of the event")
                 .AddOption("00", "00")
                 .AddOption("05", "05")
@@ -285,68 +311,66 @@ namespace EchelonBot
         [ComponentInteraction("minute_select_*")]
         public async Task HandleMinuteSelected(string customId, string minute)
         {
-            string[] splits = customId.Split('_');
+            int eventId = int.Parse(customId);
+            int _minute = int.Parse(minute);
 
-            int month = int.Parse(splits[1]);
-            int week = int.Parse(splits[3]);
-            int day = int.Parse(splits[5]);
-            int hour = int.Parse(splits[7]);
-            string amOrPm = splits[9];
-            int _min = int.Parse(minute);
+            _requestWorkingCache[eventId].Minute = _minute;
+
+            var amOrPmDropdown = new SelectMenuBuilder()
+                .WithCustomId($"ampm_select_{eventId}")
+                .WithPlaceholder("AM or PM")
+                .AddOption("AM", "AM")
+                .AddOption("PM", "PM");
+
+            var builder = new ComponentBuilder().WithSelectMenu(amOrPmDropdown);
+
+            await RespondAsync("AM or PM?", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("ampm_select_*")]
+        public async Task HandleAmPmSelected(string customId, string amOrPm)
+        {
+            int eventId = int.Parse(customId);
+
+            ScheduleEventRequest scheduleEventRequest = _requestWorkingCache[eventId];
+
+            scheduleEventRequest.AmOrPm = amOrPm;
+
+            await RespondToEventRequestAsync(scheduleEventRequest);
+
+            _requestWorkingCache.Remove(scheduleEventRequest.Id);
+        }
+
+        private async Task RespondToEventRequestAsync(ScheduleEventRequest scheduleEventRequest)
+        {
+            int _hour = scheduleEventRequest.Hour;
+
+            if (scheduleEventRequest.AmOrPm.ToLower() == "pm")
+                _hour += 12;
 
             int year = DateTime.Now.Year;
 
-            if (month < DateTime.Now.Month)
+            if (scheduleEventRequest.Month < DateTime.Now.Month)
                 ++year;
 
-            DateTime eventDate = new DateTime(year, month, day, hour, _min, 0);
+            // Always Eastern time (UTC -5)
 
-            await RespondAsync($"Event would be scheduled for {eventDate.ToString()}");
-        }
+            TimeSpan offset = new(-5, 0, 0);
 
-        private void AddHourOptions(SelectMenuBuilder builder)
-        {
-            builder.AddOption("12", "12");
-            builder.AddOption("1", "1");
-            builder.AddOption("2", "2");
-            builder.AddOption("3", "3");
-            builder.AddOption("4", "4");
-            builder.AddOption("5", "5");
-            builder.AddOption("6", "6");
-            builder.AddOption("7", "7");
-            builder.AddOption("8", "8");
-            builder.AddOption("9", "9");
-            builder.AddOption("10", "10");
-            builder.AddOption("11", "11");
-        }
+            DateTimeOffset eventDateTime = new DateTimeOffset(year, scheduleEventRequest.Month, scheduleEventRequest.Day, _hour, scheduleEventRequest.Minute, 0, offset);
 
+            var event_ = new EchelonEvent(scheduleEventRequest.Name, eventDateTime, scheduleEventRequest.EventType);
 
-        [SlashCommand("raid", "Schedule a Raid")]
-        public async Task Raid(DateTime time, string name)
-        {
-            var event_ = NewEchelonEvent(EventType.Raid, time, name);
-            event_.Id = GetNextAvailableEventId();
+            event_.Id = scheduleEventRequest.Id;
 
-            var message = await RespondToGameEventAsync(event_);
+            IUserMessage message;
+
+            if (scheduleEventRequest.EventType == EventType.Meeting)
+                message = await RespondToMeetingEventAsync(event_);
+            else
+                message = await RespondToGameEventAsync(event_);
+
             await SaveEventToTableStorage(message.Id, event_);
-        }
-
-        [SlashCommand("meeting", "Schedule a Meeting")]
-        public async Task Meeting(DateTime time, string name)
-        {
-            var event_ = NewEchelonEvent(EventType.Meeting, time, name);
-            event_.Id = GetNextAvailableEventId();
-
-            var message = await RespondToMeetingEventAsync(event_);
-            await SaveEventToTableStorage(message.Id, event_);
-        }
-
-
-        private EchelonEvent NewEchelonEvent(EventType eventType, DateTime time, string name)
-        {
-            var event_ = new EchelonEvent(name, time.ToUniversalTime(), eventType);
-
-            return event_;
         }
 
         private Embed CreateEmbed(EchelonEvent ecEvent, IEnumerable<AttendeeRecord> attendees = null)
