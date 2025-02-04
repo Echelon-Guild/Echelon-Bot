@@ -415,7 +415,7 @@ namespace EchelonBot
                 if (ecEvent.EventType == EventType.Meeting)
                 {
                     IEnumerable<AttendeeRecord> attending = attendees.Where(e => e.Role.ToLower() == "attendee");
-                    embed.AddField("Attendees", GetMeetingAttendeeString(attendees));
+                    embed.AddField("Attendees", GetMeetingAttendeeString(attending));
                 }
                 else
                 {
