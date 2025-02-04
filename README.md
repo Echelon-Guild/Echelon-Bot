@@ -19,7 +19,7 @@ BATTLE_NET_CLIENT_ID
 BATTLE_NET_CLIENT_SECRET
 
 If running locally, add them to a launchSettings.json file in the /Properties folder. It should look like this:
-
+```
 {
   "profiles": {
     "Echelon-Bot": {
@@ -37,7 +37,7 @@ If running locally, add them to a launchSettings.json file in the /Properties fo
     }
   }
 }
-
+```
 DO NOT check this launchSettings.json into source control. It's in the gitignore but I thought it was worth mentioning.
 
 Make sure those environment variables are filled out appropriately or the bot cannot run.
