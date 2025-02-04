@@ -1,6 +1,7 @@
 ﻿using Discord.Interactions;
 using EchelonBot.Models.WoW;
 using EchelonBot.Services.WoW;
+using System.Web;
 
 namespace EchelonBot.Modules
 {
@@ -19,13 +20,16 @@ namespace EchelonBot.Modules
 
             await DeferAsync();
 
-            Uri uri = new Uri($"https://us.api.blizzard.com/data/wow/search/mount?namespace=static-us&name.en_US=Turtle&orderby=id&_page=1");
+            string endpoint = $"data/wow/search/mount?namespace=static-us&name.en_US={name}&orderby=id&_page=1";
 
             try
             {
-                var response = await _wowApiService.Get<MountSearchResult>(uri);
+                MountSearchResult response = await _wowApiService.Get<MountSearchResult>(endpoint);
 
-                await FollowupAsync("That worked!", ephemeral: true);
+                if (response.Results.Count() > 0)
+                    await FollowupAsync($"That worked! - First mount found was {response.Results[0].Data.Name.EnglishUS}", ephemeral: true);
+                else
+                    await FollowupAsync("That worked, but I didn't find a match.", ephemeral: true);
             }
             catch (Exception ex)
             {
