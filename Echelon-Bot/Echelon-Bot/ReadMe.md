@@ -6,6 +6,12 @@ DISCORD_TOKEN should have your bot token from the discord developer portal.
 
 DISCORD_SERVER_ID should have the ID of the Discord server you want the bot to run on.
 
+You also need a Battle.NET api client id and secret to use that module.
+
+BATTLE_NET_CLIENT_ID
+
+BATTLE_NET_CLIENT_SECRET
+
 If running locally, add them to a launchSettings.json file in the /Properties folder. It should look like this:
 
 {
@@ -19,6 +25,8 @@ If running locally, add them to a launchSettings.json file in the /Properties fo
         "AZURE_STORAGE_CONNECTION_STRING": "",
         "DISCORD_TOKEN": "",
         "DISCORD_SERVER_ID": ""
+        "BATTLE_NET_CLIENT_ID": ""
+        "BATTLE_NET_CLIENT_SECRET": ""
       }
     }
   }
