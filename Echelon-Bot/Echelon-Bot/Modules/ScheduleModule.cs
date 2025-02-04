@@ -265,18 +265,30 @@ namespace EchelonBot
 
         private void AddHourOptions(SelectMenuBuilder builder)
         {
-            builder.AddOption("12", "12");
-            builder.AddOption("1", "1");
-            builder.AddOption("2", "2");
-            builder.AddOption("3", "3");
-            builder.AddOption("4", "4");
-            builder.AddOption("5", "5");
-            builder.AddOption("6", "6");
-            builder.AddOption("7", "7");
-            builder.AddOption("8", "8");
-            builder.AddOption("9", "9");
-            builder.AddOption("10", "10");
-            builder.AddOption("11", "11");
+            builder.AddOption("12:00 AM", "0");
+            builder.AddOption("1:00 AM", "1");
+            builder.AddOption("2:00 AM", "2");
+            builder.AddOption("3:00 AM", "3");
+            builder.AddOption("4:00 AM", "4");
+            builder.AddOption("5:00 AM", "5");
+            builder.AddOption("6:00 AM", "6");
+            builder.AddOption("7:00 AM", "7");
+            builder.AddOption("8:00 AM", "8");
+            builder.AddOption("9:00 AM", "9");
+            builder.AddOption("10:00 AM", "10");
+            builder.AddOption("11:00 AM", "11");
+            builder.AddOption("12:00 PM", "12");
+            builder.AddOption("1:00 PM", "13");
+            builder.AddOption("2:00 PM", "14");
+            builder.AddOption("3:00 PM", "15");
+            builder.AddOption("4:00 PM", "16");
+            builder.AddOption("5:00 PM", "17");
+            builder.AddOption("6:00 PM", "18");
+            builder.AddOption("7:00 PM", "19");
+            builder.AddOption("8:00 PM", "20");
+            builder.AddOption("9:00 PM", "21");
+            builder.AddOption("10:00 PM", "22");
+            builder.AddOption("11:00 PM", "23");
         }
 
         [ComponentInteraction("hour_select_*")]
@@ -291,17 +303,9 @@ namespace EchelonBot
                 .WithCustomId($"minute_select_{eventId}")
                 .WithPlaceholder("Select the minute of the event")
                 .AddOption("00", "00")
-                .AddOption("05", "05")
-                .AddOption("10", "10")
                 .AddOption("15", "15")
-                .AddOption("20", "20")
-                .AddOption("25", "25")
                 .AddOption("30", "30")
-                .AddOption("35", "35")
-                .AddOption("40", "40")
-                .AddOption("45", "45")
-                .AddOption("50", "50")
-                .AddOption("55", "55");
+                .AddOption("45", "45");
 
             var builder = new ComponentBuilder().WithSelectMenu(minuteDropdown);
 
@@ -316,25 +320,7 @@ namespace EchelonBot
 
             _requestWorkingCache[eventId].Minute = _minute;
 
-            var amOrPmDropdown = new SelectMenuBuilder()
-                .WithCustomId($"ampm_select_{eventId}")
-                .WithPlaceholder("AM or PM")
-                .AddOption("AM", "AM")
-                .AddOption("PM", "PM");
-
-            var builder = new ComponentBuilder().WithSelectMenu(amOrPmDropdown);
-
-            await RespondAsync("AM or PM?", components: builder.Build(), ephemeral: true);
-        }
-
-        [ComponentInteraction("ampm_select_*")]
-        public async Task HandleAmPmSelected(string customId, string amOrPm)
-        {
-            int eventId = int.Parse(customId);
-
             ScheduleEventRequest scheduleEventRequest = _requestWorkingCache[eventId];
-
-            scheduleEventRequest.AmOrPm = amOrPm;
 
             await RespondToEventRequestAsync(scheduleEventRequest);
 
@@ -343,21 +329,16 @@ namespace EchelonBot
 
         private async Task RespondToEventRequestAsync(ScheduleEventRequest scheduleEventRequest)
         {
-            int _hour = scheduleEventRequest.Hour;
-
-            if (scheduleEventRequest.AmOrPm.ToLower() == "pm")
-                _hour += 12;
+            await DeferAsync();
 
             int year = DateTime.Now.Year;
 
             if (scheduleEventRequest.Month < DateTime.Now.Month)
                 ++year;
 
-            // Always Eastern time (UTC -5)
-
             TimeSpan offset = new(-5, 0, 0);
 
-            DateTimeOffset eventDateTime = new DateTimeOffset(year, scheduleEventRequest.Month, scheduleEventRequest.Day, _hour, scheduleEventRequest.Minute, 0, offset);
+            DateTimeOffset eventDateTime = new DateTimeOffset(year, scheduleEventRequest.Month, scheduleEventRequest.Day, scheduleEventRequest.Hour, scheduleEventRequest.Minute, 0, offset);
 
             var event_ = new EchelonEvent(scheduleEventRequest.Name, eventDateTime, scheduleEventRequest.EventType);
 
@@ -401,10 +382,12 @@ namespace EchelonBot
                     }
             }
 
+            string timestamp = $"<t:{ecEvent.EventDateTime.ToUnixTimeSeconds()}:F>";
+
             EmbedBuilder embed = new EmbedBuilder()
                 .WithTitle(ecEvent.Name)
-                .WithDescription($"This is a {ecEvent.EventType.ToString()} event, scheduled for {ecEvent.EventDateTime.ToUniversalTime()}.")
                 .WithColor(color)
+                .AddField("Scheduled Time", timestamp)
                 .AddField("Event Type", ecEvent.EventType.ToString(), true)
                 .AddField("Organizer", Context.User.GlobalName, true)
                 .WithThumbnailUrl(Context.User.GetAvatarUrl())
@@ -495,8 +478,6 @@ namespace EchelonBot
 
         private async Task<IUserMessage> RespondToGameEventAsync(EchelonEvent ecEvent)
         {
-            await DeferAsync(); // Defers the response to avoid immediate timeout
-
             MessageComponent components = new ComponentBuilder()
                 .WithButton("Sign Up", $"signup_event_{ecEvent.Id}")
                 .WithButton("Absence", $"absence_event_{ecEvent.Id}")
