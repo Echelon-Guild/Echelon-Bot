@@ -5,7 +5,7 @@ Echelon Bot is a guild bot for the guild Echelon on Icecrown.
 It is primarily a World of Warcraft event scheduling service that integrated with Discord.
 
 # Running the bot
-It runs in a docker container and requires an Azure Storage Account for data persistence.
+Echelon-Bot (pending rename) runs in a docker container and requires an Azure Storage Account for data persistence.
 
 You will need several environment variables configured on the container.
 
