@@ -400,34 +400,38 @@ namespace EchelonBot
                     IEnumerable<AttendeeRecord> attending = attendees.Where(e => e.Role.ToLower() == "attendee");
 
                     if (attending.Any())
-                        embed.AddField("Attendees", GetMeetingAttendeeString(attending));
+                        embed.AddField($"Attendees - {attending.Count()}", GetMeetingAttendeeString(attending));
                 }
                 else
                 {
                     IEnumerable<AttendeeRecord> tanks = attendees.Where(e => e.Role.ToLower() == "tank");
                     IEnumerable<AttendeeRecord> healers = attendees.Where(e => e.Role.ToLower() == "healer");
-                    IEnumerable<AttendeeRecord> dps = attendees.Where(e => e.Role.ToLower() == "dps");
+                    IEnumerable<AttendeeRecord> mdps = attendees.Where(e => e.Role.ToLower() == "melee dps");
+                    IEnumerable<AttendeeRecord> rdps = attendees.Where(e => e.Role.ToLower() == "melee dps");
 
 
                     if (tanks.Any())
-                        embed.AddField("Tanks", GetGameEventAttendeeString(tanks));
+                        embed.AddField($"Tanks - {tanks.Count()}", GetGameEventAttendeeString(tanks));
 
                     if (healers.Any())
-                        embed.AddField("Healers", GetGameEventAttendeeString(healers));
+                        embed.AddField($"Healers - {healers.Count()}", GetGameEventAttendeeString(healers));
 
-                    if (dps.Any())
-                        embed.AddField("DPS", GetGameEventAttendeeString(dps));
+                    if (mdps.Any())
+                        embed.AddField($"Melee DPS - {mdps.Count()}", GetGameEventAttendeeString(mdps));
+
+                    if (rdps.Any())
+                        embed.AddField($"Ranged DPS - {rdps.Count()}", GetGameEventAttendeeString(rdps));
                 }
 
                 IEnumerable<AttendeeRecord> absent = attendees.Where(e => e.Role.ToLower() == "absent");
 
                 if (absent.Any())
-                    embed.AddField("Absent", GetMeetingAttendeeString(absent));
+                    embed.AddField($"Absent - {absent.Count()}", GetMeetingAttendeeString(absent));
 
                 IEnumerable<AttendeeRecord> tentative = attendees.Where(e => e.Role.ToLower() == "tentative");
 
                 if (tentative.Any())
-                    embed.AddField("Tentative", GetMeetingAttendeeString(tentative));
+                    embed.AddField($"Tentative - {tentative.Count()}", GetMeetingAttendeeString(tentative));
             }
 
             return embed.Build();
@@ -453,27 +457,10 @@ namespace EchelonBot
             StringBuilder sb = new();
             foreach (AttendeeRecord attendee in attendees)
             {
-                sb.AppendLine($"{attendee.DiscordDisplayName} - {NamePrettyfier(attendee.Class)} - {NamePrettyfier(attendee.Spec)}");
+                sb.AppendLine($"{attendee.DiscordDisplayName} - {attendee.Class.Prettyfy()} - {attendee.Spec.Prettyfy()}");
             }
 
             return sb.ToString() ?? string.Empty;
-        }
-
-        private string NamePrettyfier(string name)
-        {
-            string[] splits = name.Split("_");
-
-            StringBuilder sb = new(splits[0].FirstCharToUpper());
-
-            if (splits.Length > 1)
-            {
-                for (int i = 1; i < splits.Length; i++)
-                {
-                    sb.Append($" {splits[i].FirstCharToUpper()}");
-                }
-            }
-
-            return sb.ToString();
         }
 
         private async Task<IUserMessage> RespondToGameEventAsync(EchelonEvent ecEvent)
@@ -492,8 +479,6 @@ namespace EchelonBot
 
         private async Task<IUserMessage> RespondToMeetingEventAsync(EchelonEvent ecEvent)
         {
-            await DeferAsync(); // Defer the response first
-
             MessageComponent components = new ComponentBuilder()
                 .WithButton("Sign Up", $"signupmeeting_event_{ecEvent.Id}")
                 .WithButton("Absence", $"absence_event_{ecEvent.Id}")
@@ -702,7 +687,7 @@ namespace EchelonBot
             await UpdateEventEmbed(eventId);
 
             // Confirm signup
-            await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Replace("_", " ").ToUpper()} {selectedClass.ToUpper()}** ({role})", ephemeral: true);
+            await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Prettyfy().ToUpper()} {selectedClass.Prettyfy().ToUpper()}** ({role})", ephemeral: true);
         }
 
         [ComponentInteraction("absence_event_*")]
@@ -737,12 +722,29 @@ namespace EchelonBot
         {
             var tanks = new HashSet<string> { "Blood Death Knight", "Guardian Druid", "Brewmaster Monk", "Protection Paladin", "Protection Warrior", "Vengeance Demon Hunter" };
             var healers = new HashSet<string> { "Restoration Druid", "Mistweaver Monk", "Holy Paladin", "Holy Priest", "Discipline Priest", "Restoration Shaman", "Preservation Evoker" };
+            var mDps = new HashSet<string> 
+            {
+                "Assassination Rogue",
+                "Outlaw Rogue",
+                "Subtlety Rogue",
+                "Fury Warrior",
+                "Arms Warrior",
+                "Retribution Paladin",
+                "Frost Death Knight",
+                "Unholy Death Knight",
+                "Enhancement Shaman",
+                "Feral Druid",
+                "Havoc Demon Hunter",
+                "Windwalker Monk",
+                "Survival Hunter"
+            };
 
-            string fullSpec = $"{NamePrettyfier(spec)} {NamePrettyfier(playerClass)}";
+            string fullSpec = $"{spec.Prettyfy()} {playerClass.Prettyfy()}";
 
             if (tanks.Contains(fullSpec)) return "Tank";
             if (healers.Contains(fullSpec)) return "Healer";
-            return "DPS";
+            if (mDps.Contains(fullSpec)) return "Melee DPS";
+            return "Ranged DPS";
         }
 
         private int GetNextAvailableAttendeeRecordId()
