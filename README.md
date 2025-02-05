@@ -4,6 +4,20 @@ Echelon Bot is a guild bot for the guild Echelon on Icecrown.
 
 It is primarily a World of Warcraft event scheduling service that integrated with Discord.
 
+# Using the bot
+The bot interacts with Discord through Slash Commands.
+
+Slash commands take parameters, then usually respond with a series of dropdowns to gather more information.
+
+Available commands are:
+
+/raid NAME DESCRIPTION
+/mythic NAME DESCRIPTION
+/meeting NAME DESCRIPTION
+/event NAME DESCRIPTION
+
+/event just adds an extra step where it asks if you want a raid, dungeon, or meeting.
+
 # Running the bot
 Echelon-Bot (pending rename) runs in a docker container and requires an Azure Storage Account for data persistence.
 
