@@ -1,6 +1,7 @@
 ﻿using Azure.Data.Tables;
 using Discord;
 using Discord.Interactions;
+using Discord.Rest;
 using EchelonBot.Models;
 using EchelonBot.Models.Entities;
 using System.Text;
@@ -38,7 +39,8 @@ namespace EchelonBot
                 EventName = event_.Name,
                 EventDateTime = event_.EventDateTime,
                 EventDescription = event_.Description,
-                Organizer = Context.User.Username,
+                Organizer = event_.Organizer,
+                ImageUrl = event_.ImageUrl,
                 MessageId = messageId
             };
 
@@ -382,7 +384,7 @@ namespace EchelonBot
 
             DateTimeOffset eventDateTime = new DateTimeOffset(year, scheduleEventRequest.Month, scheduleEventRequest.Day, scheduleEventRequest.Hour, scheduleEventRequest.Minute, 0, offset);
 
-            var event_ = new EchelonEvent(scheduleEventRequest.Name, scheduleEventRequest.Description, eventDateTime, scheduleEventRequest.EventType);
+            var event_ = new EchelonEvent(scheduleEventRequest.Name, scheduleEventRequest.Description, Context.User.GlobalName, Context.User.GetAvatarUrl(), eventDateTime, scheduleEventRequest.EventType);
 
             event_.Id = scheduleEventRequest.Id;
 
@@ -432,8 +434,8 @@ namespace EchelonBot
                 .WithColor(color)
                 .AddField("Scheduled Time", timestamp)
                 .AddField("Event Type", ecEvent.EventType.ToString(), true)
-                .AddField("Organizer", Context.User.GlobalName, true)
-                .WithThumbnailUrl(Context.User.GetAvatarUrl())
+                .AddField("Organizer", ecEvent.Organizer, true)
+                .WithThumbnailUrl(ecEvent.ImageUrl)
                 .WithFooter("Powered by Frenzied Regeneration");
 
             if (attendees != null)
@@ -537,7 +539,6 @@ namespace EchelonBot
         private int GetNextAvailableEventId()
         {
             return Random.Shared.Next();
-
         }
 
         public async Task UpdateEventEmbed(int eventId)
@@ -569,7 +570,7 @@ namespace EchelonBot
                 .ToList();
 
             // Rebuild the embed with updated attendees
-            var updatedEvent = new EchelonEvent(eventEntity.EventName, eventEntity.EventDescription, eventEntity.EventDateTime, Enum.Parse<EventType>(eventEntity.PartitionKey));
+            var updatedEvent = new EchelonEvent(eventEntity.EventName, eventEntity.EventDescription, eventEntity.Organizer, eventEntity.ImageUrl, eventEntity.EventDateTime, Enum.Parse<EventType>(eventEntity.PartitionKey));
             var embed = CreateEmbed(updatedEvent, attendees);
 
             // Modify the existing message with the updated embed
