@@ -12,6 +12,7 @@ namespace EchelonBot.Models.Entities
         public DateTimeOffset EventDateTime { get; set; }
         public string Organizer { get; set; }
         public string ImageUrl { get; set; }
+        public string Footer { get; set; }
         public ulong MessageId { get; set; }
 
         public ETag ETag { get; set; }
