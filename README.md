@@ -11,10 +11,12 @@ Slash commands take parameters, then usually respond with a series of dropdowns 
 
 Available commands are:
 
+````
 /raid NAME DESCRIPTION
 /mythic NAME DESCRIPTION
 /meeting NAME DESCRIPTION
 /event NAME DESCRIPTION
+````
 
 /event just adds an extra step where it asks if you want a raid, dungeon, or meeting.
 
