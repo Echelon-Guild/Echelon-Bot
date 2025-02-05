@@ -34,6 +34,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
         services.AddHttpClient();
 
+        services.AddHostedService<ScheduledMessageService>();
     })
     .Build();
 
