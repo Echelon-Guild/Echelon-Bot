@@ -1,6 +1,7 @@
 ﻿using Azure.Data.Tables;
 using Discord;
 using Discord.Interactions;
+using Discord.Rest;
 using EchelonBot.Models;
 using EchelonBot.Models.Entities;
 using System.Text;
@@ -11,6 +12,7 @@ namespace EchelonBot
     {
         private readonly TableClient _eventsTableClient;
         private readonly TableClient _attendeeTableClient;
+        private readonly TableClient _scheduledMessageTableClient;
 
         private int[] _longMonths = [1, 3, 5, 7, 8, 10, 12];
 
@@ -23,6 +25,9 @@ namespace EchelonBot
 
             _attendeeTableClient = tableServiceClient.GetTableClient("AttendeeRecords");
             _attendeeTableClient.CreateIfNotExists();
+
+            _scheduledMessageTableClient = tableServiceClient.GetTableClient("ScheduledMessages");
+            _scheduledMessageTableClient.CreateIfNotExists();
         }
 
         public async Task SaveEventToTableStorage(ulong messageId, EchelonEvent event_)
@@ -33,7 +38,9 @@ namespace EchelonBot
                 RowKey = event_.Id.ToString(),
                 EventName = event_.Name,
                 EventDateTime = event_.EventDateTime,
-                Organizer = Context.User.Username,
+                EventDescription = event_.Description,
+                Organizer = event_.Organizer,
+                ImageUrl = event_.ImageUrl,
                 MessageId = messageId
             };
 
@@ -62,13 +69,14 @@ namespace EchelonBot
         // I tried to keep things in order.
 
         [SlashCommand("mythic", "Schedule a Mythic+")]
-        public async Task Mythic(string name)
+        public async Task Mythic(string name, string description)
         {
             ScheduleEventRequest request = new();
 
             request.Name = name;
             request.Id = GetNextAvailableEventId();
             request.EventType = EventType.Dungeon;
+            request.Description = description;
 
             _requestWorkingCache.Add(request.Id, request);
 
@@ -76,13 +84,14 @@ namespace EchelonBot
         }
 
         [SlashCommand("raid", "Schedule a Raid")]
-        public async Task Raid(string name)
+        public async Task Raid(string name, string description)
         {
             ScheduleEventRequest request = new();
 
             request.Name = name;
             request.Id = GetNextAvailableEventId();
             request.EventType = EventType.Raid;
+            request.Description = description;
 
             _requestWorkingCache.Add(request.Id, request);
 
@@ -90,23 +99,58 @@ namespace EchelonBot
         }
 
         [SlashCommand("meeting", "Schedule a Meeting")]
-        public async Task Meeting(string name)
+        public async Task Meeting(string name, string description)
         {
             ScheduleEventRequest request = new();
 
             request.Name = name;
             request.Id = GetNextAvailableEventId();
             request.EventType = EventType.Meeting;
+            request.Description = description;
 
             _requestWorkingCache.Add(request.Id, request);
 
             await RespondToTypeSelected(request.Id);
         }
 
-        private async Task RespondToTypeSelected(int requestId)
+        [SlashCommand("event", "Schedule an event")]
+        public async Task Event(string name, string description)
+        {
+            ScheduleEventRequest request = new();
+            request.Name = name;
+            request.Id = GetNextAvailableEventId();
+            request.Description = description;
+
+            _requestWorkingCache.Add(request.Id, request);
+
+            var eventTypeDropdown = new SelectMenuBuilder()
+                .WithCustomId($"event_select_{request.Id}")
+                .WithPlaceholder("Choose an event type")
+                .AddOption("Raid", EventType.Raid.ToString())
+                .AddOption("Dungeon", EventType.Dungeon.ToString())
+                .AddOption("Meeting", EventType.Meeting.ToString());
+
+            var builder = new ComponentBuilder().WithSelectMenu(eventTypeDropdown);
+
+            await RespondAsync("Choose an event type:", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("event_select_*")]
+        public async Task HandleEventTypeSelected(string customId, string eventType)
+        {
+            int eventId = int.Parse(customId);
+
+            EventType type = Enum.Parse<EventType>(eventType);
+
+            _requestWorkingCache[eventId].EventType = type;
+
+            await RespondToTypeSelected(eventId);
+        }
+
+        private async Task RespondToTypeSelected(int eventId)
         {
             var monthDropdown = new SelectMenuBuilder()
-                .WithCustomId($"month_select_{requestId}")
+                .WithCustomId($"month_select_{eventId}")
                 .WithPlaceholder("Select the month of the event")
                 .AddOption(DateTime.Now.ToString("MMMM"), DateTime.Now.Month.ToString())
                 .AddOption(DateTime.Now.AddMonths(1).ToString("MMMM"), DateTime.Now.AddMonths(1).Month.ToString())
@@ -340,7 +384,7 @@ namespace EchelonBot
 
             DateTimeOffset eventDateTime = new DateTimeOffset(year, scheduleEventRequest.Month, scheduleEventRequest.Day, scheduleEventRequest.Hour, scheduleEventRequest.Minute, 0, offset);
 
-            var event_ = new EchelonEvent(scheduleEventRequest.Name, eventDateTime, scheduleEventRequest.EventType);
+            var event_ = new EchelonEvent(scheduleEventRequest.Name, scheduleEventRequest.Description, Context.User.GlobalName, Context.User.GetAvatarUrl(), eventDateTime, scheduleEventRequest.EventType);
 
             event_.Id = scheduleEventRequest.Id;
 
@@ -386,11 +430,12 @@ namespace EchelonBot
 
             EmbedBuilder embed = new EmbedBuilder()
                 .WithTitle(ecEvent.Name)
+                .WithDescription(ecEvent.Description)
                 .WithColor(color)
                 .AddField("Scheduled Time", timestamp)
                 .AddField("Event Type", ecEvent.EventType.ToString(), true)
-                .AddField("Organizer", Context.User.GlobalName, true)
-                .WithThumbnailUrl(Context.User.GetAvatarUrl())
+                .AddField("Organizer", ecEvent.Organizer, true)
+                .WithThumbnailUrl(ecEvent.ImageUrl)
                 .WithFooter("Powered by Frenzied Regeneration");
 
             if (attendees != null)
@@ -407,7 +452,7 @@ namespace EchelonBot
                     IEnumerable<AttendeeRecord> tanks = attendees.Where(e => e.Role.ToLower() == "tank");
                     IEnumerable<AttendeeRecord> healers = attendees.Where(e => e.Role.ToLower() == "healer");
                     IEnumerable<AttendeeRecord> mdps = attendees.Where(e => e.Role.ToLower() == "melee dps");
-                    IEnumerable<AttendeeRecord> rdps = attendees.Where(e => e.Role.ToLower() == "melee dps");
+                    IEnumerable<AttendeeRecord> rdps = attendees.Where(e => e.Role.ToLower() == "ranged dps");
 
 
                     if (tanks.Any())
@@ -494,7 +539,6 @@ namespace EchelonBot
         private int GetNextAvailableEventId()
         {
             return Random.Shared.Next();
-
         }
 
         public async Task UpdateEventEmbed(int eventId)
@@ -526,15 +570,33 @@ namespace EchelonBot
                 .ToList();
 
             // Rebuild the embed with updated attendees
-            var updatedEvent = new EchelonEvent(eventEntity.EventName, eventEntity.EventDateTime, Enum.Parse<EventType>(eventEntity.PartitionKey));
+            var updatedEvent = new EchelonEvent(eventEntity.EventName, eventEntity.EventDescription, eventEntity.Organizer, eventEntity.ImageUrl, eventEntity.EventDateTime, Enum.Parse<EventType>(eventEntity.PartitionKey));
             var embed = CreateEmbed(updatedEvent, attendees);
 
             // Modify the existing message with the updated embed
             await message.ModifyAsync(msg => msg.Embed = embed);
         }
 
+        private async Task ScheduleEventReminder(EchelonEventEntity ecEvent)
+        {
+            var scheduledMessageEntity = new ScheduledMessageEntity()
+            {
+                UserId = Context.User.Id,
+                EventId = ecEvent.RowKey,
+                SendTime = ecEvent.EventDateTime.AddMinutes(-15),
+                Message = CreateReminderMessage(ecEvent)
+            };
 
-        // Record response to a meeting
+            await _scheduledMessageTableClient.UpsertEntityAsync(scheduledMessageEntity);
+        }
+
+        private string CreateReminderMessage(EchelonEventEntity ecEvent)
+        {
+            return $"Reminder!\nYou have the event {ecEvent.EventName} at <t:{ecEvent.EventDateTime.ToUnixTimeSeconds()}:F>!";
+        }
+
+
+        // Record response to a meeting or game event.
 
         [ComponentInteraction("signupmeeting_*")]
         public async Task HandleMeetingSignup(string customId)
@@ -551,9 +613,57 @@ namespace EchelonBot
 
             await UpdateEventEmbed(eventId);
 
+            var eventEntity = _eventsTableClient.Query<EchelonEventEntity>()
+                .FirstOrDefault(e => e.RowKey == eventId.ToString());
+
+            await ScheduleEventReminder(eventEntity);
+
             await RespondAsync("See you at the meeting!", ephemeral: true);
         }
 
+        [ComponentInteraction("absence_event_*")]
+        public async Task HandleAbscence(string customId)
+        {
+            int eventId = int.Parse(customId);
+
+            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, "Absent", string.Empty, string.Empty);
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
+
+            await UpdateEventEmbed(eventId);
+
+            await RespondAsync("We'll miss you!", ephemeral: true);
+
+            var scheduledReminders = _scheduledMessageTableClient.Query<ScheduledMessageEntity>(e => e.EventId == customId);
+
+            foreach (ScheduledMessageEntity message in scheduledReminders)
+            {
+                await _scheduledMessageTableClient.DeleteEntityAsync(message);
+            }            
+        }
+
+        [ComponentInteraction("tentative_event_*")]
+        public async Task HandleTentative(string customId)
+        {
+            int eventId = int.Parse(customId);
+
+            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, "Tentative", string.Empty, string.Empty);
+
+            SaveAttendeeRecordToTableStorage(record).Wait();
+
+            await UpdateEventEmbed(eventId);
+
+            await RespondAsync("We hope to see you!", ephemeral: true);
+
+            var scheduledReminders = _scheduledMessageTableClient.Query<ScheduledMessageEntity>(e => e.EventId == customId);
+
+            foreach (ScheduledMessageEntity message in scheduledReminders)
+            {
+                await _scheduledMessageTableClient.DeleteEntityAsync(message);
+            }
+        }
+
+        // Game event signup is a bit more complicated, so here's it's section.
         [ComponentInteraction("signup_*")]
         public async Task HandleSignup(string customId)
         {
@@ -688,35 +798,14 @@ namespace EchelonBot
 
             // Confirm signup
             await RespondAsync($"✅ {user} signed up as a **{selectedSpec.Prettyfy().ToUpper()} {selectedClass.Prettyfy().ToUpper()}** ({role})", ephemeral: true);
+
+            var eventEntity = _eventsTableClient.Query<EchelonEventEntity>()
+                .FirstOrDefault(e => e.RowKey == eventId.ToString());
+
+            await ScheduleEventReminder(eventEntity);
         }
 
-        [ComponentInteraction("absence_event_*")]
-        public async Task HandleAbscence(string customId)
-        {
-            int eventId = int.Parse(customId);
 
-            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, "Absent", string.Empty, string.Empty);
-
-            SaveAttendeeRecordToTableStorage(record).Wait();
-
-            await UpdateEventEmbed(eventId);
-
-            await RespondAsync("We'll miss you!", ephemeral: true);
-        }
-
-        [ComponentInteraction("tentative_event_*")]
-        public async Task HandleTentative(string customId)
-        {
-            int eventId = int.Parse(customId);
-
-            AttendeeRecord record = new(eventId, Context.User.Username, Context.User.GlobalName, "Tentative", string.Empty, string.Empty);
-
-            SaveAttendeeRecordToTableStorage(record).Wait();
-
-            await UpdateEventEmbed(eventId);
-
-            await RespondAsync("We hope to see you!", ephemeral: true);
-        }
 
         private string GetRole(string playerClass, string spec)
         {

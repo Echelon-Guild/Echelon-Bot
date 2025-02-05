@@ -8,8 +8,10 @@ namespace EchelonBot.Models.Entities
         public string PartitionKey { get; set; }  // E.g., "Raid", "Mythic", "Meeting"
         public string RowKey { get; set; }  // Unique event ID
         public string EventName { get; set; }
+        public string EventDescription { get; set; }
         public DateTimeOffset EventDateTime { get; set; }
         public string Organizer { get; set; }
+        public string ImageUrl { get; set; }
         public ulong MessageId { get; set; }
 
         public ETag ETag { get; set; }
