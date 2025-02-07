@@ -1,9 +1,10 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using EchelonBot.Utility;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace EchelonBot
+namespace EchelonBot.Services
 {
     public class DiscordStartupService : IHostedService
     {

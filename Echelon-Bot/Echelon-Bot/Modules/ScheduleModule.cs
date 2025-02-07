@@ -1,12 +1,11 @@
 ﻿using Azure.Data.Tables;
 using Discord;
 using Discord.Interactions;
-using Discord.Rest;
 using EchelonBot.Models;
 using EchelonBot.Models.Entities;
-using System.Text;
+using EchelonBot.Services;
 
-namespace EchelonBot
+namespace EchelonBot.Modules
 {
     public class ScheduleModule : InteractionModuleBase<SocketInteractionContext>
     {

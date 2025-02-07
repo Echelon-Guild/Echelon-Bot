@@ -1,6 +1,6 @@
 ﻿using Discord.Interactions;
 
-namespace EchelonBot
+namespace EchelonBot.Models
 {
     public class NewInstanceModal : IModal
     {

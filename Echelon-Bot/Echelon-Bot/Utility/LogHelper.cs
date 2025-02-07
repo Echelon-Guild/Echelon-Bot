@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Microsoft.Extensions.Logging;
 
-namespace EchelonBot
+namespace EchelonBot.Utility
 {
     public static class LogHelper
     {

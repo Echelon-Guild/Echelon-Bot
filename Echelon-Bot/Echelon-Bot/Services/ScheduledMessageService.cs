@@ -5,7 +5,7 @@ using EchelonBot.Models;
 using EchelonBot.Models.Entities;
 using Microsoft.Extensions.Hosting;
 
-namespace EchelonBot
+namespace EchelonBot.Services
 {
     public class ScheduledMessageService : BackgroundService
     {

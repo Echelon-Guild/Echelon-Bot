@@ -1,10 +1,10 @@
 ﻿using Discord;
 using EchelonBot.Models;
 using EchelonBot.Models.Entities;
-using EchelonBot.Services;
+using EchelonBot.Models.WoW;
 using System.Text;
 
-namespace EchelonBot
+namespace EchelonBot.Services
 {
     public class EmbedFactory
     {
@@ -193,6 +193,40 @@ namespace EchelonBot
                 .Build();
         }
 
+        public Embed CreateInstanceEmbed(IEnumerable<WoWInstanceInfoEntity> instanceInfos)
+        {
+            var embedBuilder = new EmbedBuilder()
+                .WithTitle("Stored Instances")
+                .WithDescription("Here are the instances currently stored in the database.")
+                .WithColor(Color.Green);
 
+            var raids = instanceInfos.Where(e => e.PartitionKey == InstanceType.Raid.ToString());
+            var dungeons = instanceInfos.Where(e => e.PartitionKey == InstanceType.Dungeon.ToString());
+
+            if (raids.Any())
+            {
+                embedBuilder.AddField("Raids", GetStoredInstanceString(raids));
+            }
+
+            if (dungeons.Any())
+            {
+                embedBuilder.AddField("Dungeons", GetStoredInstanceString(dungeons));
+            }
+
+            return embedBuilder.Build();
+                
+        }
+
+        private string GetStoredInstanceString(IEnumerable<WoWInstanceInfoEntity> instances)
+        {
+            StringBuilder sb = new();
+
+            foreach (WoWInstanceInfoEntity instance in instances)
+            {
+                sb.AppendLine($"{instance.Name} - ID: {instance.RowKey}");
+            }
+
+            return sb.ToString();
+        }
     }
 }

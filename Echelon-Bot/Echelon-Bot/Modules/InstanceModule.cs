@@ -1,10 +1,10 @@
 ﻿using Azure.Data.Tables;
 using Discord;
 using Discord.Interactions;
+using EchelonBot.Models;
 using EchelonBot.Models.Entities;
 using EchelonBot.Models.WoW;
-using System.Collections.Generic;
-using System.Text;
+using EchelonBot.Services;
 
 namespace EchelonBot.Modules
 {
@@ -76,37 +76,9 @@ namespace EchelonBot.Modules
         {
             var entities = _instanceTable.Query<WoWInstanceInfoEntity>(e => true);
 
-            var dungeons = entities.Where(e => e.InstanceType == InstanceType.Dungeon);
-            var raids = entities.Where(e => e.InstanceType == InstanceType.Raid);
+            Embed embed = _embedFactory.CreateInstanceEmbed(entities);
 
-            bool hasRaids = raids.Any();
-            bool hasDungeons = dungeons.Any();
-
-            if (!hasRaids && !hasDungeons)
-            {
-                await RespondAsync("No instances currently stored", ephemeral: true);
-                return;
-            }
-
-            List<Embed> embeds = new();
-
-            if (raids.Any())
-            {   
-                foreach (WoWInstanceInfoEntity raid in raids)
-                {
-                    embeds.Add(_embedFactory.CreateInstanceEmbed(raid));    
-                }
-            }
-
-            if (dungeons.Any())
-            {
-                foreach (WoWInstanceInfoEntity dungeon in dungeons)
-                {
-                    embeds.Add(_embedFactory.CreateInstanceEmbed(dungeon));
-                }
-            }
-
-            await RespondAsync(embeds: embeds.ToArray(), ephemeral: true);
+            await RespondAsync(embed: embed, ephemeral: true);
         }
 
         [SlashCommand("deleteinstance", "Remove a stored instance.")]
