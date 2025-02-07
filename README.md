@@ -61,6 +61,9 @@ DO NOT check this launchSettings.json into source control. It's in the gitignore
 
 Make sure those environment variables are filled out appropriately or the bot cannot run.
 
+There is a provided PowerShell script for populating the StoredEmojis table appropriately. You will need to run it against your Azure storage account
+for signups to work properly.
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first
