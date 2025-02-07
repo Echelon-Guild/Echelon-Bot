@@ -2,6 +2,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using EchelonBot;
+using EchelonBot.Services;
 using EchelonBot.Services.WoW;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,12 +30,18 @@ using IHost host = Host.CreateDefaultBuilder(args)
             return new TableServiceClient(Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING"));
         });
 
+        services.AddSingleton<EmoteFinder>();
+
+        services.AddSingleton<EmbedFactory>();
+
         services.AddSingleton<BattleNetAuthService>();
         services.AddSingleton<WoWApiService>();
 
         services.AddHttpClient();
 
         services.AddHostedService<ScheduledMessageService>();
+
+        
     })
     .Build();
 

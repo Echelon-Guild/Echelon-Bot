@@ -14,11 +14,13 @@ namespace EchelonBot
         private readonly TableClient _attendeeTableClient;
         private readonly TableClient _scheduledMessageTableClient;
 
+        private readonly EmbedFactory _embedFactory;
+
         private int[] _longMonths = [1, 3, 5, 7, 8, 10, 12];
 
         private static Dictionary<int, ScheduleEventRequest> _requestWorkingCache = new Dictionary<int, ScheduleEventRequest>();
 
-        public ScheduleModule(TableServiceClient tableServiceClient)
+        public ScheduleModule(TableServiceClient tableServiceClient, EmbedFactory embedFactory)
         {
             _eventsTableClient = tableServiceClient.GetTableClient("EchelonEvents");
             _eventsTableClient.CreateIfNotExists();
@@ -28,6 +30,8 @@ namespace EchelonBot
 
             _scheduledMessageTableClient = tableServiceClient.GetTableClient("ScheduledMessages");
             _scheduledMessageTableClient.CreateIfNotExists();
+
+            _embedFactory = embedFactory;
         }
 
         public async Task SaveEventToTableStorage(ulong messageId, EchelonEvent event_)
@@ -385,7 +389,7 @@ namespace EchelonBot
 
             DateTimeOffset eventDateTime = new DateTimeOffset(year, scheduleEventRequest.Month, scheduleEventRequest.Day, scheduleEventRequest.Hour, scheduleEventRequest.Minute, 0, offset);
 
-            var event_ = new EchelonEvent(scheduleEventRequest.Name, scheduleEventRequest.Description, Context.User.GlobalName, Context.User.GetAvatarUrl(), EmbedFactory.GetRandomFooter(), eventDateTime, scheduleEventRequest.EventType)
+            var event_ = new EchelonEvent(scheduleEventRequest.Name, scheduleEventRequest.Description, Context.User.GlobalName, Context.User.GetAvatarUrl(), _embedFactory.GetRandomFooter(), eventDateTime, scheduleEventRequest.EventType)
             {
                 Id = scheduleEventRequest.Id
             };
@@ -408,7 +412,7 @@ namespace EchelonBot
                 .WithButton("Tentative", $"tentative_event_{ecEvent.Id}")
                 .Build();
 
-            Embed embed = EmbedFactory.CreateEmbed(ecEvent);
+            Embed embed = _embedFactory.CreateEventEmbed(ecEvent);
 
             var message = await FollowupAsync(embed: embed, components: components); // Sends the actual message
             return message;
@@ -422,7 +426,7 @@ namespace EchelonBot
                 .WithButton("Tentative", $"tentative_event_{ecEvent.Id}")
                 .Build();
 
-            Embed embed = EmbedFactory.CreateEmbed(ecEvent);
+            Embed embed = _embedFactory.CreateEventEmbed(ecEvent);
 
             var message = await FollowupAsync(embed: embed, components: components);
             return message;
@@ -463,7 +467,7 @@ namespace EchelonBot
 
             // Rebuild the embed with updated attendees
             var updatedEvent = new EchelonEvent(eventEntity.EventName, eventEntity.EventDescription, eventEntity.Organizer, eventEntity.ImageUrl,eventEntity.Footer, eventEntity.EventDateTime, Enum.Parse<EventType>(eventEntity.PartitionKey));
-            var embed = EmbedFactory.CreateEmbed(updatedEvent, attendees);
+            var embed = _embedFactory.CreateEventEmbed(updatedEvent, attendees);
 
             // Modify the existing message with the updated embed
             await message.ModifyAsync(msg => msg.Embed = embed);
