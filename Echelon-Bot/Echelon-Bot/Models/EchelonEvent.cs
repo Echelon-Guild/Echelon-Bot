@@ -11,8 +11,6 @@
         public DateTimeOffset EventDateTime { get; set; }
         public EventType EventType { get; set; }
 
-        public EchelonEvent() { }
-
         public EchelonEvent(string name, string description, string organizer, string imageUrl, string footer, DateTimeOffset eventDateTime, EventType eventType)
         {
             Name = name;

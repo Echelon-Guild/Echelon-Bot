@@ -205,12 +205,12 @@ namespace EchelonBot.Services
 
             if (raids.Any())
             {
-                embedBuilder.AddField("Raids", GetStoredInstanceString(raids));
+                embedBuilder.AddField("__Raids__", GetStoredInstanceString(raids));
             }
 
             if (dungeons.Any())
             {
-                embedBuilder.AddField("Dungeons", GetStoredInstanceString(dungeons));
+                embedBuilder.AddField("__Dungeons__", GetStoredInstanceString(dungeons));
             }
 
             return embedBuilder.Build();
@@ -223,7 +223,8 @@ namespace EchelonBot.Services
 
             foreach (WoWInstanceInfoEntity instance in instances)
             {
-                sb.AppendLine($"{instance.Name} - ID: {instance.RowKey}");
+                sb.AppendLine($"{instance.Name}");
+                sb.AppendLine($"ID: {instance.RowKey}");
             }
 
             return sb.ToString();

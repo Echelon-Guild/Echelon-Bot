@@ -1,8 +1,8 @@
 ﻿using Azure.Data.Tables;
 using Discord;
 using Discord.Interactions;
-using EchelonBot.Models;
 using EchelonBot.Models.Entities;
+using EchelonBot.Models.Modals;
 using EchelonBot.Models.WoW;
 using EchelonBot.Services;
 
@@ -35,15 +35,7 @@ namespace EchelonBot.Modules
 
             _workingCache.Add(id, entity);
 
-            var mb = new ModalBuilder()
-                .WithTitle("Add Instance to database")
-                .WithCustomId($"newinstance_{id}")
-                .AddTextInput("Name", "instanceName")
-                .AddTextInput("Type", "instanceType")
-                .AddTextInput("Is this legacy? Say True or False", "instanceLegacy")
-                .AddTextInput("Image Url for the instance", "instanceUrl");
-
-            await RespondWithModalAsync(mb.Build());
+            await RespondWithModalAsync<NewInstanceModal>($"newinstance_{id}");
         }
 
         [ModalInteraction("newinstance_*")]
@@ -66,6 +58,14 @@ namespace EchelonBot.Modules
                 return;
             }
 
+            bool nameTaken = _instanceTable.Query<WoWInstanceInfoEntity>(e => e.Name.ToLower() == modal.InstanceType.ToLower()).Any();
+
+            if (nameTaken) 
+            {
+                await RespondAsync($"Name {modal.InstanceName} is already taken. You must delete it before uploading again.");
+                return;
+            }
+
             await _instanceTable.UpsertEntityAsync(_workingCache[id]);
             await RespondAsync($"Instance {modal.InstanceName} saved.");
         }
@@ -81,20 +81,41 @@ namespace EchelonBot.Modules
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
+        [SlashCommand("getinstance", "Get a specific instance by name or ID")]
+        public async Task GetInstance(string identifier)
+        {
+            WoWInstanceInfoEntity entity;
+
+            if (Guid.TryParse(identifier, out Guid id))
+            {
+                entity = _instanceTable.Query<WoWInstanceInfoEntity>(e => e.RowKey == id.ToString()).First();
+            }
+            else
+            {
+                entity = _instanceTable.Query<WoWInstanceInfoEntity>(e => e.Name == identifier).First();
+            }
+
+            Embed embed = _embedFactory.CreateInstanceEmbed(entity);
+
+            await RespondAsync(embed: embed, ephemeral: true);
+        }
+
         [SlashCommand("deleteinstance", "Remove a stored instance.")]
         public async Task DeleteInstance(string id)
         {
             if (Guid.TryParse(id, out Guid _id))
             {
+                WoWInstanceInfoEntity entity = _instanceTable.Query<WoWInstanceInfoEntity>(e => e.RowKey == _id.ToString()).First();
+
                 var areYouSureBuilder = new SelectMenuBuilder()
                     .WithCustomId($"deleteconfirmed_{id}")
-                    .WithPlaceholder("Are you sure you want to delete this instance?")
+                    .WithPlaceholder($"Are you sure you want to delete {entity.Name}?")
                     .AddOption("Yes", "yes")
                     .AddOption("No", "no");
 
                 var builder = new ComponentBuilder().WithSelectMenu(areYouSureBuilder);
 
-                await RespondAsync("Are you sure you want to delete this instance?", components: builder.Build(), ephemeral: true);
+                await RespondAsync($"Are you sure you want to delete {entity.Name}", components: builder.Build(), ephemeral: true);
 
                 return;
             }

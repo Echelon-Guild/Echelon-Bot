@@ -1,4 +1,5 @@
 ﻿using Azure.Data.Tables;
+using Azure.Storage.Blobs;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EchelonBot;
@@ -16,6 +17,8 @@ using IHost host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices((context, services) =>
     {
+        // The order here matters, so don't go mucking with it.
+
         services.AddSingleton<DiscordSocketClient>();
         services.AddSingleton(provider =>
         {
@@ -29,6 +32,13 @@ using IHost host = Host.CreateDefaultBuilder(args)
         {
             return new TableServiceClient(Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING"));
         });
+
+        services.AddSingleton(provider => 
+        {
+            return new BlobServiceClient(Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING"));
+        });
+
+        services.AddSingleton<BlobUploadService>();
 
         services.AddSingleton<EmoteFinder>();
 
