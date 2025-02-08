@@ -2,7 +2,6 @@
 using Azure.Storage.Blobs;
 using Discord.Interactions;
 using Discord.WebSocket;
-using EchelonBot;
 using EchelonBot.Services;
 using EchelonBot.Services.WoW;
 using Microsoft.Extensions.Configuration;
@@ -20,12 +19,15 @@ using IHost host = Host.CreateDefaultBuilder(args)
         // The order here matters, so don't go mucking with it.
 
         services.AddSingleton<DiscordSocketClient>();
+
         services.AddSingleton(provider =>
         {
             var discord = provider.GetRequiredService<DiscordSocketClient>();
             return new InteractionService(discord);
         });
+
         services.AddHostedService<InteractionHandlingService>();
+
         services.AddHostedService<DiscordStartupService>();
 
         services.AddSingleton(provider =>
@@ -45,6 +47,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<EmbedFactory>();
 
         services.AddSingleton<BattleNetAuthService>();
+
         services.AddSingleton<WoWApiService>();
 
         services.AddHttpClient();
