@@ -1,20 +1,20 @@
-﻿using Azure;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
+﻿using Azure.Storage.Blobs;
 using Discord;
 
 namespace EchelonBot.Services
 {
     public class BlobUploadService
     {
-        private BlobServiceClient _blobServiceClient;
+        private readonly BlobServiceClient _blobServiceClient;
+        private readonly HttpClient _httpClient;
 
-        public BlobUploadService(BlobServiceClient blobServiceClient)
+        public BlobUploadService(BlobServiceClient blobServiceClient, HttpClient httpClient)
         {
             _blobServiceClient = blobServiceClient;
+            _httpClient = httpClient;
         }
 
-        public async Task<string> UploadBlobAsync(IAttachment attachment, string container)
+        public async Task<Uri> UploadBlobAsync(IAttachment attachment, string container)
         {
             if (attachment == null)
             {
@@ -27,13 +27,10 @@ namespace EchelonBot.Services
 
             var blobClient = containerClient.GetBlobClient(attachment.Filename);
 
-            using var httpClient = new HttpClient();
-            using var stream = await httpClient.GetStreamAsync(attachment.Url);
+            using var stream = await _httpClient.GetStreamAsync(attachment.Url);
             await blobClient.UploadAsync(stream, overwrite: true);
 
-            string blobUrl = blobClient.Uri.ToString();
-
-            return blobUrl;
+            return blobClient.Uri;
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Azure;
 using Azure.Data.Tables;
-using EchelonBot.Models.WoW;
 
 namespace EchelonBot.Models.Entities
 {

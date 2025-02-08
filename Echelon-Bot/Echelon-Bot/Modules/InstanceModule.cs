@@ -1,9 +1,9 @@
 ﻿using Azure.Data.Tables;
 using Discord;
 using Discord.Interactions;
+using EchelonBot.Models;
 using EchelonBot.Models.Entities;
 using EchelonBot.Models.Modals;
-using EchelonBot.Models.WoW;
 using EchelonBot.Services;
 
 namespace EchelonBot.Modules

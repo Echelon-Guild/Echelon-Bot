@@ -1,5 +1,4 @@
-﻿using EchelonBot.Models.WoW;
-
+﻿
 namespace EchelonBot.Models
 {
     public class NewTeamRequest

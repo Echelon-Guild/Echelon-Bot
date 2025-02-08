@@ -1,7 +1,6 @@
 ﻿using Discord;
 using EchelonBot.Models;
 using EchelonBot.Models.Entities;
-using EchelonBot.Models.WoW;
 using System.Text;
 
 namespace EchelonBot.Services

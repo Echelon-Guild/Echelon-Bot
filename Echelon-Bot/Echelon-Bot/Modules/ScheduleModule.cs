@@ -3,7 +3,9 @@ using Discord;
 using Discord.Interactions;
 using EchelonBot.Models;
 using EchelonBot.Models.Entities;
+using EchelonBot.Models.Modals;
 using EchelonBot.Services;
+using Microsoft.VisualBasic;
 
 namespace EchelonBot.Modules
 {
@@ -31,6 +33,31 @@ namespace EchelonBot.Modules
             _scheduledMessageTableClient.CreateIfNotExists();
 
             _embedFactory = embedFactory;
+        }
+
+        [SlashCommand("testevent", "Test a new event experience")]
+        public async Task TestEvent()
+        {
+            int id = GetNextAvailableEventId();
+
+            await RespondWithModalAsync<NewEventModal>($"newevent_modal_{id}");
+        }
+
+        [ModalInteraction("newevent_modal_*")]
+        public async Task HandleTestEvent(NewEventModal modal)
+        {
+            ScheduleEventRequest request = new()
+            {
+                Id = GetNextAvailableEventId(),
+                Name = modal.Name,
+                Description = modal.Description,
+                EventType = modal.EventType,
+                Year = modal.Year,
+                Month = (int)modal.Month,
+                Day = modal.Day,
+                Hour = (int)modal.Hour,
+                Minute = (int)modal.Minute,
+            };
         }
 
         public async Task SaveEventToTableStorage(ulong messageId, EchelonEvent event_)
@@ -379,14 +406,17 @@ namespace EchelonBot.Modules
         {
             await DeferAsync();
 
-            int year = DateTime.Now.Year;
+            if (scheduleEventRequest.Year is null)
+            {
+                scheduleEventRequest.Year = DateTime.Now.Year;
 
-            if (scheduleEventRequest.Month < DateTime.Now.Month)
-                ++year;
+                if (scheduleEventRequest.Month < DateTime.Now.Month)
+                    ++scheduleEventRequest.Year;
+            }
 
             TimeSpan offset = new(-5, 0, 0);
 
-            DateTimeOffset eventDateTime = new DateTimeOffset(year, scheduleEventRequest.Month, scheduleEventRequest.Day, scheduleEventRequest.Hour, scheduleEventRequest.Minute, 0, offset);
+            DateTimeOffset eventDateTime = new DateTimeOffset(scheduleEventRequest.Year.Value, scheduleEventRequest.Month, scheduleEventRequest.Day, scheduleEventRequest.Hour, scheduleEventRequest.Minute, 0, offset);
 
             var event_ = new EchelonEvent(scheduleEventRequest.Name, scheduleEventRequest.Description, Context.User.GlobalName, Context.User.GetAvatarUrl(), _embedFactory.GetRandomFooter(), eventDateTime, scheduleEventRequest.EventType)
             {

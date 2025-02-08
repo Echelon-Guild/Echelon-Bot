@@ -4,7 +4,6 @@ using Discord.Interactions;
 using EchelonBot.Models;
 using EchelonBot.Models.Entities;
 using EchelonBot.Models.Modals;
-using EchelonBot.Models.WoW;
 
 namespace EchelonBot.Modules
 {
