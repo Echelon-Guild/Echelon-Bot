@@ -35,31 +35,6 @@ namespace EchelonBot.Modules
             _embedFactory = embedFactory;
         }
 
-        [SlashCommand("testevent", "Test a new event experience")]
-        public async Task TestEvent()
-        {
-            int id = GetNextAvailableEventId();
-
-            await RespondWithModalAsync<NewEventModal>($"newevent_modal_{id}");
-        }
-
-        [ModalInteraction("newevent_modal_*")]
-        public async Task HandleTestEvent(NewEventModal modal)
-        {
-            ScheduleEventRequest request = new()
-            {
-                Id = GetNextAvailableEventId(),
-                Name = modal.Name,
-                Description = modal.Description,
-                EventType = modal.EventType,
-                Year = modal.Year,
-                Month = (int)modal.Month,
-                Day = modal.Day,
-                Hour = (int)modal.Hour,
-                Minute = (int)modal.Minute,
-            };
-        }
-
         public async Task SaveEventToTableStorage(ulong messageId, EchelonEvent event_)
         {
             var entity = new EchelonEventEntity
