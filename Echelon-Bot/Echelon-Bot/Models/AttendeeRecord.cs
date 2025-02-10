@@ -14,27 +14,5 @@ namespace EchelonBot.Models
         public string? Class { get; set; }
         [StringLength(16)]
         public string? Spec { get; set; }
-
-        public AttendeeRecord() { }
-
-        public AttendeeRecord(int eventId, string discordName, string discordDisplayName, string role, string _class, string spec)
-        {
-            EventId = eventId;
-            DiscordName = discordName;
-            DiscordDisplayName = discordDisplayName;
-            Role = role;
-            Class = _class;
-            Spec = spec;
-        }
-
-        public AttendeeRecord(int eventId, string discordName, string discordDisplayName, string role)
-        {
-            EventId = eventId;
-            DiscordName = discordName;
-            DiscordDisplayName = discordDisplayName;
-            Role = role;
-        }
-
-
     }
 }
