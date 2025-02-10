@@ -17,7 +17,7 @@ namespace EchelonBot.Modules
 
         public InstanceModule(TableServiceClient tableServiceClient, EmbedFactory embedFactory)
         {
-            _instanceTable = tableServiceClient.GetTableClient("Instances");
+            _instanceTable = tableServiceClient.GetTableClient(TableNames.INSTANCE_TABLE_NAME);
             _instanceTable.CreateIfNotExists();
 
             _embedFactory = embedFactory;

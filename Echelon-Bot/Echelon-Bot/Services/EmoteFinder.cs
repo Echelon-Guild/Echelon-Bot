@@ -9,7 +9,7 @@ namespace EchelonBot.Services
 
         public EmoteFinder(TableServiceClient tableServiceClient) 
         {
-            _storedEmotes = tableServiceClient.GetTableClient("StoredEmotes");
+            _storedEmotes = tableServiceClient.GetTableClient(TableNames.EMOTE_TABLE_NAME);
             _storedEmotes.CreateIfNotExists();
         }
 

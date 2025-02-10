@@ -16,5 +16,4 @@ namespace EchelonBot.Models.Entities
         public ETag ETag { get; set; }
         public DateTimeOffset? Timestamp { get; set; }
     }
-
 }

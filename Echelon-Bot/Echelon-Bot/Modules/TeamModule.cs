@@ -15,7 +15,7 @@ namespace EchelonBot.Modules
 
         public TeamModule(TableServiceClient tableServiceClient)
         {
-            _teamTable = tableServiceClient.GetTableClient("Teams");
+            _teamTable = tableServiceClient.GetTableClient(TableNames.TEAM_TABLE_NAME);
             _teamTable.CreateIfNotExists();
         }
 

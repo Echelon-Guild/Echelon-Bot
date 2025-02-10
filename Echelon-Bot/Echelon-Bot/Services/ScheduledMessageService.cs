@@ -11,18 +11,18 @@ namespace EchelonBot.Services
     {
         private readonly DiscordSocketClient _client;
         private readonly TableClient _scheduledMessageTable;
-
-        private readonly EventStorageService _eventStorageService;
+        private readonly TableClient _eventTable;
 
         private readonly EmbedFactory _embedFactory;
 
-        public ScheduledMessageService(DiscordSocketClient client, TableServiceClient tableServiceClient, EmbedFactory embedFactory, EventStorageService eventStorageService)
+        public ScheduledMessageService(DiscordSocketClient client, TableServiceClient tableServiceClient, EmbedFactory embedFactory)
         {
             _client = client;
-            _scheduledMessageTable = tableServiceClient.GetTableClient("ScheduledMessages");
+            _scheduledMessageTable = tableServiceClient.GetTableClient(TableNames.SCHEDULED_MESSAGE_TABLE_NAME);
             _scheduledMessageTable.CreateIfNotExists();
 
-            _eventStorageService = eventStorageService;
+            _eventTable = tableServiceClient.GetTableClient(TableNames.EVENT_TABLE_NAME);
+            _embedFactory = embedFactory;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -41,16 +41,23 @@ namespace EchelonBot.Services
                         var dmChannel = await user.CreateDMChannelAsync();
                         // await dmChannel.SendMessageAsync(msg.Message);
 
-                        Guid eventId = Guid.Parse(msg.EventId);
+                        string rowKey = msg.EventId;
 
-                        EchelonEvent? ecEvent = _eventStorageService.GetEvent(eventId);
+                        EchelonEventEntity event_ = _eventTable.Query<EchelonEventEntity>(e => e.RowKey == rowKey).First();
 
-                        // If we can't find the event we can't really do anything else.
-                        if (ecEvent is null)
+                        EventType eventType = Enum.Parse<EventType>(event_.PartitionKey);
+
+                        EchelonEvent ecEvent = new()
                         {
-                            await _scheduledMessageTable.DeleteEntityAsync(msg.PartitionKey, msg.RowKey);
-                            continue;
-                        }
+                            Id = int.Parse(event_.RowKey),
+                            Name = event_.EventName,
+                            Description = event_.EventDescription,
+                            Organizer = event_.Organizer,
+                            ImageUrl = event_.ImageUrl,
+                            Footer = event_.Footer,
+                            EventDateTime = event_.EventDateTime,
+                            EventType = Enum.Parse<EventType>(event_.PartitionKey)
+                        };
 
                         Embed embed = _embedFactory.CreateEventEmbed(ecEvent);
 
