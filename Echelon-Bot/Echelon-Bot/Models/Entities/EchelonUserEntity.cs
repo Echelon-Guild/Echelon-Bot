@@ -5,7 +5,7 @@ namespace EchelonBot.Models.Entities
 {
     public class EchelonUserEntity : ITableEntity
     {
-        public string PartitionKey { get; set; }
+        public string PartitionKey { get; set; } = "Users";
         public string RowKey { get; set; }
         public string DiscordName { get; set; }
         public string DiscordDisplayName { get; set; }

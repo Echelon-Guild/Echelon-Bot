@@ -12,12 +12,13 @@ namespace EchelonBot.Modules
         private readonly TableClient _eventsTableClient;
         private readonly TableClient _attendeeTableClient;
         private readonly TableClient _scheduledMessageTableClient;
+        private readonly TableClient _userTableClient;
 
         private readonly EmbedFactory _embedFactory;
 
         private int[] _longMonths = [1, 3, 5, 7, 8, 10, 12];
 
-        private static Dictionary<int, ScheduleEventRequest> _requestWorkingCache = new Dictionary<int, ScheduleEventRequest>();
+        private static Dictionary<int, ScheduleEventRequest> _requestWorkingCache = new();
 
         public ScheduleModule(TableServiceClient tableServiceClient, EmbedFactory embedFactory)
         {
@@ -29,6 +30,9 @@ namespace EchelonBot.Modules
 
             _scheduledMessageTableClient = tableServiceClient.GetTableClient(TableNames.SCHEDULED_MESSAGE_TABLE_NAME);
             _scheduledMessageTableClient.CreateIfNotExists();
+
+            _userTableClient = tableServiceClient.GetTableClient(TableNames.USER_TABLE_NAME);
+            _userTableClient.CreateIfNotExists();
 
             _embedFactory = embedFactory;
         }
@@ -75,6 +79,22 @@ namespace EchelonBot.Modules
         [SlashCommand("mythic", "Schedule a Mythic+")]
         public async Task Mythic(string name, string description)
         {
+            if (!UserTimeZoneRegistered())
+            {
+                var countryDropdown = new SelectMenuBuilder()
+                    .WithCustomId("country_selected")
+                    .WithPlaceholder("Please select your country")
+                    .AddOption("US", "US")
+                    .AddOption("Canada", "CAN")
+                    .AddOption("Australia", "AUS");
+
+                var builder = new ComponentBuilder().WithSelectMenu(countryDropdown);
+
+                await RespondAsync("Please select your country!", components: builder.Build(), ephemeral: true);
+
+                return;
+            }
+
             ScheduleEventRequest request = new();
 
             request.Name = name;
@@ -90,6 +110,22 @@ namespace EchelonBot.Modules
         [SlashCommand("raid", "Schedule a Raid")]
         public async Task Raid(string name, string description)
         {
+            if (!UserTimeZoneRegistered())
+            {
+                var countryDropdown = new SelectMenuBuilder()
+                    .WithCustomId("country_selected")
+                    .WithPlaceholder("Please select your country")
+                    .AddOption("US", "US")
+                    .AddOption("Canada", "CAN")
+                    .AddOption("Australia", "AUS");
+
+                var builder = new ComponentBuilder().WithSelectMenu(countryDropdown);
+
+                await RespondAsync("Please select your country!", components: builder.Build(), ephemeral: true);
+
+                return;
+            }
+
             ScheduleEventRequest request = new();
 
             request.Name = name;
@@ -105,6 +141,22 @@ namespace EchelonBot.Modules
         [SlashCommand("meeting", "Schedule a Meeting")]
         public async Task Meeting(string name, string description)
         {
+            if (!UserTimeZoneRegistered())
+            {
+                var countryDropdown = new SelectMenuBuilder()
+                    .WithCustomId("country_selected")
+                    .WithPlaceholder("Please select your country")
+                    .AddOption("US", "US")
+                    .AddOption("Canada", "CAN")
+                    .AddOption("Australia", "AUS");
+
+                var builder = new ComponentBuilder().WithSelectMenu(countryDropdown);
+
+                await RespondAsync("Please select your country!", components: builder.Build(), ephemeral: true);
+
+                return;
+            }
+
             ScheduleEventRequest request = new();
 
             request.Name = name;
@@ -120,6 +172,24 @@ namespace EchelonBot.Modules
         [SlashCommand("event", "Schedule an event")]
         public async Task Event(string name, string description)
         {
+            ComponentBuilder builder;
+
+            if (!UserTimeZoneRegistered())
+            {
+                var countryDropdown = new SelectMenuBuilder()
+                    .WithCustomId("country_selected")
+                    .WithPlaceholder("Please select your country")
+                    .AddOption("US", "US")
+                    .AddOption("Canada", "CAN")
+                    .AddOption("Australia", "AUS");
+
+                builder = new ComponentBuilder().WithSelectMenu(countryDropdown);
+
+                await RespondAsync("Please select your country!", components: builder.Build(), ephemeral: true);
+
+                return;
+            }
+
             ScheduleEventRequest request = new();
             request.Name = name;
             request.Id = GetNextAvailableEventId();
@@ -134,9 +204,117 @@ namespace EchelonBot.Modules
                 .AddOption("Dungeon", EventType.Dungeon.ToString())
                 .AddOption("Meeting", EventType.Meeting.ToString());
 
-            var builder = new ComponentBuilder().WithSelectMenu(eventTypeDropdown);
+            builder = new ComponentBuilder().WithSelectMenu(eventTypeDropdown);
 
             await RespondAsync("Choose an event type:", components: builder.Build(), ephemeral: true);
+        }
+
+        private bool UserTimeZoneRegistered()
+        {
+            EchelonUserEntity? user = _userTableClient.Query<EchelonUserEntity>(e => e.RowKey == Context.User.Username).FirstOrDefault();
+
+            if (user is null) { return false; }
+
+            return !string.IsNullOrWhiteSpace(user.TimeZone);
+        }
+
+        [ComponentInteraction("country_selected")]
+        public async Task HandleCountrySelected(string selectedCountry)
+        {
+            var timeZoneSelectMenu = new SelectMenuBuilder()
+                .WithCustomId("timezone_selected")
+                .WithPlaceholder("Please select your time zone");
+
+            if (selectedCountry == "US")
+            {
+                timeZoneSelectMenu.AddOption("America/New_York", "America/New_York");
+                timeZoneSelectMenu.AddOption("America/Chicago", "America/Chicago");
+                timeZoneSelectMenu.AddOption("America/Denver", "America/Denver");
+                timeZoneSelectMenu.AddOption("America/Los_Angeles", "America/Los_Angeles");
+                timeZoneSelectMenu.AddOption("America/Anchorage", "America/Anchorage");
+                timeZoneSelectMenu.AddOption("America/Phoenix", "America/Phoenix");
+                timeZoneSelectMenu.AddOption("America/Detroit", "America/Detroit");
+                timeZoneSelectMenu.AddOption("America/Indiana/Indianapolis", "America/Indiana/Indianapolis");
+                timeZoneSelectMenu.AddOption("America/Indiana/Knox", "America/Indiana/Knox");
+                timeZoneSelectMenu.AddOption("America/Indiana/Marengo", "America/Indiana/Marengo");
+                timeZoneSelectMenu.AddOption("America/Indiana/Petersburg", "America/Indiana/Petersburg");
+                timeZoneSelectMenu.AddOption("America/Indiana/Tell_City", "America/Indiana/Tell_City");
+                timeZoneSelectMenu.AddOption("America/Indiana/Vevay", "America/Indiana/Vevay");
+                timeZoneSelectMenu.AddOption("America/Indiana/Vincennes", "America/Indiana/Vincennes");
+                timeZoneSelectMenu.AddOption("America/Indiana/Winamac", "America/Indiana/Winamac");
+                timeZoneSelectMenu.AddOption("America/Kentucky/Louisville", "America/Kentucky/Louisville");
+                timeZoneSelectMenu.AddOption("America/Kentucky/Monticello", "America/Kentucky/Monticello");
+                timeZoneSelectMenu.AddOption("America/North_Dakota/Beulah", "America/North_Dakota/Beulah");
+                timeZoneSelectMenu.AddOption("America/North_Dakota/Center", "America/North_Dakota/Center");
+                timeZoneSelectMenu.AddOption("America/North_Dakota/New_Salem", "America/North_Dakota/New_Salem");
+                timeZoneSelectMenu.AddOption("Pacific/Honolulu", "Pacific/Honolulu");
+            }
+
+            if (selectedCountry == "CAN")
+            {
+                timeZoneSelectMenu.AddOption("America/Toronto", "America/Toronto");
+                timeZoneSelectMenu.AddOption("America/Vancouver", "America/Vancouver");
+                timeZoneSelectMenu.AddOption("America/Edmonton", "America/Edmonton");
+                timeZoneSelectMenu.AddOption("America/Winnipeg", "America/Winnipeg");
+                timeZoneSelectMenu.AddOption("America/Halifax", "America/Halifax");
+                timeZoneSelectMenu.AddOption("America/St_Johns", "America/St_Johns");
+                timeZoneSelectMenu.AddOption("America/Regina", "America/Regina");
+                timeZoneSelectMenu.AddOption("America/Whitehorse", "America/Whitehorse");
+                timeZoneSelectMenu.AddOption("America/Dawson", "America/Dawson");
+                timeZoneSelectMenu.AddOption("America/Glace_Bay", "America/Glace_Bay");
+                timeZoneSelectMenu.AddOption("America/Goose_Bay", "America/Goose_Bay");
+                timeZoneSelectMenu.AddOption("America/Iqaluit", "America/Iqaluit");
+                timeZoneSelectMenu.AddOption("America/Moncton", "America/Moncton");
+                timeZoneSelectMenu.AddOption("America/Nipigon", "America/Nipigon");
+                timeZoneSelectMenu.AddOption("America/Pangnirtung", "America/Pangnirtung");
+                timeZoneSelectMenu.AddOption("America/Rainy_River", "America/Rainy_River");
+                timeZoneSelectMenu.AddOption("America/Rankin_Inlet", "America/Rankin_Inlet");
+                timeZoneSelectMenu.AddOption("America/Resolute", "America/Resolute");
+                timeZoneSelectMenu.AddOption("America/Swift_Current", "America/Swift_Current");
+                timeZoneSelectMenu.AddOption("America/Thunder_Bay", "America/Thunder_Bay");
+                timeZoneSelectMenu.AddOption("America/Yellowknife", "America/Yellowknife");
+            }
+
+            if (selectedCountry == "AUS")
+            {
+                timeZoneSelectMenu.AddOption("Australia/Sydney", "Australia/Sydney");
+                timeZoneSelectMenu.AddOption("Australia/Melbourne", "Australia/Melbourne");
+                timeZoneSelectMenu.AddOption("Australia/Brisbane", "Australia/Brisbane");
+                timeZoneSelectMenu.AddOption("Australia/Perth", "Australia/Perth");
+                timeZoneSelectMenu.AddOption("Australia/Adelaide", "Australia/Adelaide");
+                timeZoneSelectMenu.AddOption("Australia/Hobart", "Australia/Hobart");
+                timeZoneSelectMenu.AddOption("Australia/Darwin", "Australia/Darwin");
+                timeZoneSelectMenu.AddOption("Australia/Broken_Hill", "Australia/Broken_Hill");
+                timeZoneSelectMenu.AddOption("Australia/Lindeman", "Australia/Lindeman");
+                timeZoneSelectMenu.AddOption("Australia/Lord_Howe", "Australia/Lord_Howe");
+            }
+
+            var builder = new ComponentBuilder().WithSelectMenu(timeZoneSelectMenu);
+
+            await RespondAsync("Please select your time zone", components: builder.Build(), ephemeral: true);
+        }
+
+        [ComponentInteraction("timezone_selected")]
+        public async Task HandleTimeZoneSelected(string selectedTimeZone)
+        {
+            EchelonUserEntity? user = _userTableClient.Query<EchelonUserEntity>(e => e.RowKey == Context.User.Username).FirstOrDefault();
+
+            if (user is null)
+            {
+                user = new EchelonUserEntity()
+                {
+                    RowKey = Context.User.Username,
+                    TimeZone = selectedTimeZone
+                };
+            }
+            else
+            {
+                user.TimeZone = selectedTimeZone;
+            }
+
+            await _userTableClient.UpsertEntityAsync(user);
+
+            await RespondAsync("Thank you! Please try scheduling your event again.");
         }
 
         [ComponentInteraction("event_select_*")]
@@ -387,7 +565,13 @@ namespace EchelonBot.Modules
                     ++scheduleEventRequest.Year;
             }
 
-            TimeSpan offset = new(-5, 0, 0);
+            EchelonUserEntity? organizer = _userTableClient.Query<EchelonUserEntity>(e => e.RowKey == Context.User.Username).FirstOrDefault();
+
+            if (organizer is null) { organizer = new() { TimeZone = "America/New_York" }; }
+
+            TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById(organizer.TimeZone);
+
+            TimeSpan offset = tz.BaseUtcOffset;
 
             DateTimeOffset eventDateTime = new DateTimeOffset(scheduleEventRequest.Year.Value, scheduleEventRequest.Month, scheduleEventRequest.Day, scheduleEventRequest.Hour, scheduleEventRequest.Minute, 0, offset);
 
@@ -419,6 +603,7 @@ namespace EchelonBot.Modules
                 .WithButton("Sign Up", $"signup_event_{ecEvent.Id}")
                 .WithButton("Absence", $"absence_event_{ecEvent.Id}")
                 .WithButton("Tentative", $"tentative_event_{ecEvent.Id}")
+                .WithButton("Set/Reset Spec", "set_class")
                 .Build();
 
             Embed embed = _embedFactory.CreateEventEmbed(ecEvent);
